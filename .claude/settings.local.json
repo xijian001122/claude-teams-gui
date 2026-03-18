@@ -1,0 +1,123 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(openspec new:*)",
+      "Bash(openspec status:*)",
+      "Bash(openspec instructions:*)",
+      "Bash(npm run:*)",
+      "mcp__playwright__browser_navigate",
+      "Bash(pkill:*)",
+      "Bash(npx playwright:*)",
+      "Bash(sqlite3:*)",
+      "Bash(curl*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(python3:*)",
+      "Bash(npx openspec:*)",
+      "Bash(for spec:*)",
+      "Bash(chmod:*)",
+      "WebSearch",
+      "Bash(echo:*)",
+      "Bash(apt-get update:*)",
+      "Bash(node:*)",
+      "Bash(mkdir:*)",
+      "Bash(for file:*)",
+      "Bash(find:*)",
+      "Bash(npm install:*)",
+      "Bash(tmux list-panes:*)",
+      "Bash(ctx7 search:*)",
+      "Bash(lsof:*)",
+      "Bash(openspec list:*)",
+      "mcp__playwright__browser_install",
+      "Bash(bun:*)",
+      "mcp__playwright__browser_run_code",
+      "Bash(openspec done:*)",
+      "Bash(openspec:*)",
+      "mcp__plugin_claude-mem_mcp-search__search",
+      "mcp__plugin_claude-mem_mcp-search__timeline",
+      "mcp__plugin_claude-mem_mcp-search__get_observations",
+      "Bash(npm list:*)",
+      "Bash(npx context7-cli:*)",
+      "Bash(command -v ctx7)",
+      "Read(//usr/local/bin/**)",
+      "Bash(ctx7:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "Bash(opsx propose:*)",
+      "Bash(npx tsc:*)",
+      "Bash(ss:*)",
+      "Bash(bash scripts/start.sh:*)",
+      "Bash(bash scripts/:*)",
+      "Bash(kill:*)",
+      "Bash(killall:*)",
+      "Bash(scripts/start.sh:*)",
+      "Bash(npm run start:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run test:*)",
+      "Bash(lsof -ti:*)",
+      "Bash(sleep:*)",
+      "Bash(cd:*)",
+      "Bash(ps aux:*)",
+      "Bash(wget:*)"
+    ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/skill-forced-eval.js"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/session-start.js"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/pre-tool-use.js"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/post-tool-use.js"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/stop-hook.js"
+          }
+        ]
+      }
+    ]
+  }
+}

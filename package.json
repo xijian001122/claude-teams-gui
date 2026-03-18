@@ -1,0 +1,77 @@
+{
+  "name": "claude-chat",
+  "version": "0.1.0",
+  "description": "Visual chat interface for Claude Code Teams",
+  "main": "dist/server/index.js",
+  "bin": {
+    "claude-chat": "./dist/server/cli.js"
+  },
+  "scripts": {
+    "dev": "bun --bun --parallel dev:server dev:client",
+    "dev:server": "bun --hot run src/server/cli.ts",
+    "dev:client": "bunx vite",
+    "dev:client:lan": "CLIENT_HOST=0.0.0.0 CLIENT_PORT=4559 bunx vite",
+    "start:config": "bash scripts/start.sh",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "vite build",
+    "build:server": "tsc -p src/server/tsconfig.json",
+    "build:prod": "NODE_ENV=production npm run build",
+    "start": "node dist/server/index.js",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ext ts,tsx",
+    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "@fastify/cors": "^9.0.1",
+    "@fastify/static": "^7.0.4",
+    "@fastify/websocket": "^10.0.1",
+    "@iconify/react": "^6.0.2",
+    "@preact/preset-vite": "^2.10.4",
+    "chokidar": "^3.6.0",
+    "commander": "^12.0.0",
+    "date-fns": "^4.1.0",
+    "fastify": "^4.26.2",
+    "marked": "^17.0.4",
+    "node-cron": "^3.0.3",
+    "open": "^10.1.0",
+    "preact": "^10.29.0",
+    "sqlite3": "^5.1.7",
+    "uuid": "^9.0.1",
+    "ws": "^8.16.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/node-cron": "^3.0.11",
+    "@types/uuid": "^9.0.8",
+    "@types/ws": "^8.5.10",
+    "@typescript-eslint/eslint-plugin": "^7.3.1",
+    "@typescript-eslint/parser": "^7.3.1",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^8.57.0",
+    "npm-run-all": "^4.1.5",
+    "postcss": "^8.4.38",
+    "prettier": "^3.2.5",
+    "tailwindcss": "^3.4.1",
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.3",
+    "vite": "^5.2.6",
+    "vitest": "^1.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "claude",
+    "chat",
+    "teams",
+    "websocket",
+    "collaboration"
+  ],
+  "author": "",
+  "license": "MIT"
+}

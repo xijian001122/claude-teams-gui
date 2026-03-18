@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>消息"发给谁"UI设计方案</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 40px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #333;
+        }
+        .design-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .design-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1a1a1a;
+        }
+        .design-desc {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        /* 聊天界面模拟 */
+        .chat-mock {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+        }
+        .chat-header {
+            text-align: center;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* 消息气泡 */
+        .message-row {
+            display: flex;
+            margin-bottom: 16px;
+            align-items: flex-start;
+        }
+        .message-row.self {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 0 12px;
+            flex-shrink: 0;
+        }
+        .avatar.user { background: #3b82f6; }
+        .avatar.agent { background: #10b981; }
+
+        .message-content {
+            max-width: 70%;
+        }
+
+        .sender-name {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+            margin-left: 4px;
+        }
+        .message-row.self .sender-name {
+            text-align: right;
+            margin-right: 4px;
+        }
+
+        .bubble {
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .message-row:not(.self) .bubble {
+            background: white;
+            color: #1a1a1a;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .message-row.self .bubble {
+            background: #3b82f6;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        /* 发给谁标签 - 方案1：内嵌标签 */
+        .to-badge-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-bottom: 6px;
+        }
+        .message-row:not(.self) .to-badge-inline {
+            background: #e0e7ff;
+            color: #4338ca;
+        }
+        .message-row.self .to-badge-inline {
+            background: rgba(255,255,255,0.3);
+            color: rgba(255,255,255,0.95);
+        }
+
+        /* 发给谁标签 - 方案2：顶部小字 */
+        .to-label-above {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .message-row.self .to-label-above {
+            justify-content: flex-end;
+        }
+
+        /* 发给谁标签 - 方案3：右侧小标签 */
+        .message-with-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .message-row.self .message-with-meta {
+            flex-direction: row-reverse;
+        }
+        .to-badge-side {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #f0f0f0;
+            color: #666;
+            white-space: nowrap;
+        }
+
+        /* 公开消息样式 */
+        .public-badge {
+            font-size: 11px;
+            color: #999;
+            font-style: italic;
+        }
+
+        /* 时间戳 */
+        .timestamp {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+            margin-left: 4px;
+        }
+        .message-row.self .timestamp {
+            text-align: right;
+            margin-right: 4px;
+        }
+
+        /* 对比表格 */
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+        .compare-table th,
+        .compare-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .compare-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #333;
+        }
+        .compare-table td {
+            color: #666;
+        }
+        .pros { color: #059669; }
+        .cons { color: #dc2626; }
+
+        .highlight {
+            background: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💬 消息"发给谁" UI 设计方案</h1>
+
+        <!-- 方案1：内嵌标签 -->
+        <div class="design-card">
+            <div class="design-title">方案 1：气泡内顶部标签</div>
+            <div class="design-desc">在消息气泡内部顶部显示一个小标签，清楚地表明这条消息的目标接收者</div>
+
+            <div class="chat-mock">
+                <div class="chat-header">团队聊天 - 你发送的消息会显示发给谁</div>
+
+                <!-- 我发的公开消息 -->
+                <div class="message-row self">
+                    <div class="avatar user">我</div>
+                    <div class="message-content">
+                        <div class="sender-name">我</div>
+                        <div class="bubble">
+                            大家下午好！👋
+                        </div>
+                        <div class="timestamp">14:30</div>
+                    </div>
+                </div>
+
+                <!-- 我发的定向消息 -->
+                <div class="message-row self">
+                    <div class="avatar user">我</div>
+                    <div class="message-content">
+                        <div class="sender-name">我</div>
+                        <div class="bubble">
+                            <div class="to-badge-inline">
+                                <span>→</span>
+                                <span>发送给 @team-lead</span>
+                            </div>
+                            <div>有个问题想请教一下...</div>
+                        </div>
+                        <div class="timestamp">14:32</div>
+                    </div>
+                </div>
+
+                <!-- 别人发给我的 -->
+                <div class="message-row">
+                    <div class="avatar agent">L</div>
+                    <div class="message-content">
+                        <div class="sender-name">team-lead</div>
+                        <div class="bubble">
+                            <div class="to-badge-inline">
+                                <span>→</span>
+                                <span>发送给你</span>
+                            </div>
+                            <div>没问题，你说</div>
+                        </div>
+                        <div class="timestamp">14:33</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 方案2：气泡上方小字 -->
+        <div class="design-card">
+            <div class="design-title">方案 2：气泡上方提示文字</div>
+            <div class="design-desc">在消息气泡上方显示一行小字，不占用气泡内部空间，更加简洁</div>
+
+            <div class="chat-mock">
+                <div class="chat-header">团队聊天 - 简洁的上方提示</div>
+
+                <!-- 我发的公开消息 -->
+                <div class="message-row self">
+                    <div class="avatar user">我</div>
+                    <div class="message-content">
+                        <div class="sender-name">我</div>
+                        <div class="bubble">
+                            项目进度更新一下
+                        </div>
+                        <div class="timestamp">15:00</div>
+                    </div>
+                </div>
+
+                <!-- 我发的定向消息 -->
+                <div class="message-row self">
+                    <div class="avatar user">我</div>
+                    <div class="message-content">
+                        <div class="sender-name">我</div>
+                        <div class="to-label-above">
+                            <span>🔒</span>
+                            <span>发送给 developer</span>
+                        </div>
+                        <div class="bubble">
+                            这个bug帮忙看一下
+                        </div>
+                        <div class="timestamp">15:05</div>
+                    </div>
+                </div>
+
+                <!-- 别人发给我的 -->
+                <div class="message-row">
+                    <div class="avatar agent">D</div>
+                    <div class="message-content">
+                        <div class="sender-name">developer</div>
+                        <div class="to-label-above">
+                            <span>🔒</span>
+                            <span>发送给你</span>
+                        </div>
+                        <div class="bubble">
+                            好的，正在排查
+                        </div>
+                        <div class="timestamp">15:06</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 方案3：侧边标签 -->
+        <div class="design-card">
+            <div class="design-title">方案 3：气泡旁边小标签</div>
+            <div class="design-desc">在消息气泡旁边显示一个小标签，适合需要同时展示多种元数据的场景</div>
+
+            <div class="chat-mock">
+                <div class="chat-header">团队聊天 - 侧边标签设计</div>
+
+                <!-- 公开消息 -->
+                <div class="message-row self">
+                    <div class="avatar user">我</div>
+                    <div class="message-with-meta">
+                        <div class="bubble">
+                            今天的会议取消了
+                        </div>
+                        <div class="to-badge-side">公开</div>
+                    </div>
+                </div>
+
+                <!-- 定向消息 -->
+                <div class="message-row self">
+                    <div class="avatar user">我</div>
+                    <div class="message-with-meta">
+                        <div class="bubble">
+                            记得提交代码review
+                        </div>
+                        <div class="to-badge-side">→ reviewer</div>
+                    </div>
+                </div>
+
+                <!-- 发给我的 -->
+                <div class="message-row">
+                    <div class="avatar agent">R</div>
+                    <div class="message-with-meta">
+                        <div class="bubble">
+                            已经提交了，请查看
+                        </div>
+                        <div class="to-badge-side">发送给你</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 对比总结 -->
+        <div class="design-card">
+            <div class="design-title">📊 方案对比</div>
+            <div class="design-desc">三种设计方案的优缺点对比，帮助你选择最适合的方案</div>
+
+            <table class="compare-table">
+                <thead>
+                    <tr>
+                        <th>方案</th>
+                        <th>优点</th>
+                        <th>缺点</th>
+                        <th>适用场景</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>方案1：内嵌标签</strong></td>
+                        <td class="pros">视觉集中，与消息关联紧密<br>容易识别定向消息</td>
+                        <td class="cons">占用气泡内部空间</td>
+                        <td>定向消息较多的团队</td>
+                    </tr>
+                    <tr>
+                        <td><strong>方案2：上方提示</strong></td>
+                        <td class="pros">简洁清晰，不占用气泡空间<br>符合聊天应用惯例</td>
+                        <td class="cons">可能被忽略</td>
+                        <td>追求简洁的界面</td>
+                    </tr>
+                    <tr>
+                        <td><strong>方案3：侧边标签</strong></td>
+                        <td class="pros">可展示更多信息<br>不干扰阅读消息内容</td>
+                        <td class="cons">占用横向空间<br>在小屏幕上可能拥挤</td>
+                        <td>宽屏桌面应用</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 推荐方案 -->
+        <div class="design-card">
+            <div class="design-title">⭐ 推荐方案</div>
+            <div class="design-desc">基于当前 Claude Chat 的设计，我推荐 <span class="highlight">方案 1（内嵌标签）</span></div>
+
+            <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px; border-radius: 4px; margin-top: 16px;">
+                <strong>推荐理由：</strong>
+                <ul style="margin: 8px 0 0 20px; color: #166534;">
+                    <li>与当前 MessageBubble 组件设计兼容性好</li>
+                    <li>用户一眼就能看出消息是发给谁的</li>
+                    <li>不会破坏现有的消息布局</li>
+                    <li>在移动端和桌面端都能很好显示</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "lib": ["ES2022"],
+    "outDir": "../../dist/server",
+    "rootDir": "."
+  },
+  "include": ["./**/*", "../shared/**/*"],
+  "exclude": ["**/*.test.ts"]
+}

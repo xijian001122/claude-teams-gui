@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配置热加载 UI 设计方案</title>
+    <style>
+        /* ========== 基础重置 ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 40px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #1a1a1a;
+            font-size: 24px;
+        }
+
+        h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        /* ========== 设计卡片 ========== */
+        .design-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .design-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1a1a1a;
+        }
+
+        .design-desc {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        /* ========== 侧边栏样式 ========== */
+        .sidebar-mock {
+            width: 220px;
+            background: #1f2937;
+            border-radius: 8px;
+            padding: 16px 0;
+            color: #9ca3af;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+
+        .nav-item.active {
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+            border-right: 3px solid #3b82f6;
+        }
+
+        .nav-icon {
+            width: 20px;
+            margin-right: 12px;
+            text-align: center;
+        }
+
+        .nav-text {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        /* ========== 重启指示器徽章 ========== */
+        .restart-badge {
+            background: #ef4444;
+            color: white;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 500;
+            animation: pulse-badge 2s ease-out infinite;
+        }
+
+        @keyframes pulse-badge {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* ========== 重启按钮变体 ========== */
+        .nav-item .restart-btn-small {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            opacity: 0;
+            transform: translateX(10px);
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover .restart-btn-small {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .nav-item .restart-btn-small:hover {
+            background: #dc2626;
+        }
+
+        /* ========== 设置页面样式 ========== */
+        .settings-container {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 600px;
+        }
+
+        /* ========== 提示条样式 ========== */
+        .notice-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        .notice-bar.warning {
+            background: #fef3c7;
+            border-left: 4px solid #eab308;
+            color: #92400e;
+        }
+
+        .notice-bar.success {
+            background: #dcfce7;
+            border-left: 4px solid #22c55e;
+            color: #166534;
+        }
+
+        .notice-bar.info {
+            background: #e0e7ff;
+            border-left: 4px solid #6366f1;
+            color: #4338ca;
+        }
+
+        .notice-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .notice-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #666;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-secondary:hover {
+            background: #f3f4f6;
+        }
+
+        .btn-text {
+            background: transparent;
+            color: #666;
+            text-decoration: underline;
+        }
+
+        .btn-text:hover {
+            color: #333;
+        }
+
+        /* ========== 设置表单 ========== */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+
+        .form-label .require-restart {
+            color: #ef4444;
+            font-size: 12px;
+            font-weight: normal;
+            margin-left: 4px;
+        }
+
+        .form-input,
+        .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        /* ========== 开关组件 ========== */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .toggle-row:last-child {
+            border-bottom: none;
+        }
+
+        .toggle-label {
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .toggle-label .sub-label {
+            font-size: 12px;
+            color: #6b7280;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #d1d5db;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .toggle-switch.active {
+            background: #3b82f6;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+
+        /* ========== 变更详情弹窗 ========== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1a1a1a;
+        }
+
+        .change-list {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+        }
+
+        .change-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 14px;
+        }
+
+        .change-item:last-child {
+            border-bottom: none;
+        }
+
+        .change-key {
+            color: #6b7280;
+        }
+
+        .change-value {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .value-old {
+            color: #9ca3af;
+            text-decoration: line-through;
+        }
+
+        .value-new {
+            color: #166534;
+            font-weight: 500;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        /* ========== 标签页 ========== */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 1px;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            font-size: 14px;
+            color: #6b7280;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: #374151;
+        }
+
+        .tab.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+
+        /* ========== Toast 通知 ========== */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 14px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            animation: slideUp 0.3s ease;
+            z-index: 1001;
+        }
+
+        .toast.success {
+            background: #22c55e;
+        }
+
+        .toast.error {
+            background: #ef4444;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* ========== 布局 ========== */
+        .demo-layout {
+            display: flex;
+            gap: 40px;
+        }
+
+        .demo-section {
+            flex: 1;
+        }
+
+        /* ========== 交互演示提示 ========== */
+        .interaction-hint {
+            background: #f0fdf4;
+            border: 1px dashed #22c55e;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 16px;
+            font-size: 13px;
+            color: #166534;
+        }
+
+        .interaction-hint code {
+            background: rgba(255,255,255,0.7);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        /* ========== 隐藏类 ========== */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>配置热加载 UI 设计方案</h1>
+
+        <!-- 方案 1: 侧边栏指示器 -->
+        <div class="design-card" id="方案1">
+            <div class="design-title">方案 1: 侧边栏指示器</div>
+            <div class="design-desc">
+                当配置发生变更且需要重启时，侧边栏的"设置"标签显示红色徽章指示器。
+                用户可以点击设置进入查看详情，或悬停时显示快捷重启按钮。
+            </div>
+
+            <div class="demo-layout">
+                <div class="demo-section">
+                    <h2>变体 A: 红点徽章</h2>
+                    <div class="sidebar-mock">
+                        <div class="nav-item">
+                            <span class="nav-icon">💬</span>
+                            <span class="nav-text">消息</span>
+                        </div>
+                        <div class="nav-item">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">团队</span>
+                        </div>
+                        <div class="nav-item active" onclick="showToast('进入设置页面')">
+                            <span class="nav-icon">⚙️</span>
+                            <span class="nav-text">设置</span>
+                            <span class="restart-badge">需重启</span>
+                        </div>
+                    </div>
+                    <div class="interaction-hint">
+                        💡 点击"设置"标签查看效果
+                    </div>
+                </div>
+
+                <div class="demo-section">
+                    <h2>变体 B: 悬停显示重启按钮</h2>
+                    <div class="sidebar-mock">
+                        <div class="nav-item">
+                            <span class="nav-icon">💬</span>
+                            <span class="nav-text">消息</span>
+                        </div>
+                        <div class="nav-item">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">团队</span>
+                        </div>
+                        <div class="nav-item active">
+                            <span class="nav-icon">⚙️</span>
+                            <span class="nav-text">设置</span>
+                            <button class="restart-btn-small" onclick="showRestartModal()">重启</button>
+                        </div>
+                    </div>
+                    <div class="interaction-hint">
+                        💡 悬停"设置"标签查看重启按钮
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 方案 2: 设置页面提示 -->
+        <div class="design-card" id="方案2">
+            <div class="design-title">方案 2: 设置页面提示条</div>
+            <div class="design-desc">
+                进入设置页面后，根据不同的配置状态显示相应的提示条。
+                包括：需要重启的警告条、已生效的成功提示、以及手动编辑检测的通知。
+            </div>
+
+            <div class="settings-container">
+                <!-- 提示条变体 -->
+                <div class="notice-bar warning">
+                    <div class="notice-content">
+                        <span>⚠️</span>
+                        <span>检测到配置变更，需要重启服务才能生效</span>
+                    </div>
+                    <div class="notice-actions">
+                        <button class="btn btn-danger" onclick="showRestartModal()">立即重启</button>
+                        <button class="btn btn-text" onclick="showToast('已推迟重启提醒')">稍后</button>
+                    </div>
+                </div>
+
+                <!-- 标签页 -->
+                <div class="tabs">
+                    <div class="tab active">常规</div>
+                    <div class="tab">通知</div>
+                    <div class="tab">高级</div>
+                </div>
+
+                <!-- 配置项 -->
+                <div class="form-group">
+                    <label class="form-label">
+                        服务端口
+                        <span class="require-restart">(需重启)</span>
+                    </label>
+                    <input type="number" class="form-input" value="4558">
+                    <div class="form-hint">HTTP 服务监听端口</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        绑定地址
+                        <span class="require-restart">(需重启)</span>
+                    </label>
+                    <input type="text" class="form-input" value="0.0.0.0">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">主题</label>
+                    <select class="form-select">
+                        <option>自动</option>
+                        <option>浅色</option>
+                        <option>深色</option>
+                    </select>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-label">
+                        桌面通知
+                        <span class="sub-label">收到新消息时显示系统通知</span>
+                    </div>
+                    <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-label">
+                        消息提示音
+                        <span class="sub-label">收到消息时播放声音</span>
+                    </div>
+                    <div class="toggle-switch" onclick="this.classList.toggle('active')"></div>
+                </div>
+            </div>
+
+            <div class="interaction-hint">
+                💡 点击提示条上的按钮或开关组件进行交互
+            </div>
+        </div>
+
+        <!-- 方案 3: 变更详情弹窗 -->
+        <div class="design-card" id="方案3">
+            <div class="design-title">方案 3: 变更确认弹窗</div>
+            <div class="design-desc">
+                当用户点击"重启"或"查看变更"时，显示详细的配置变更对比弹窗，
+                让用户清楚知道哪些配置被修改了，从什么值改为什么值。
+            </div>
+
+            <div style="position: relative; height: 320px;">
+                <!-- 模拟背景 -->
+                <div class="settings-container" style="opacity: 0.5; filter: blur(2px);">
+                    <div class="notice-bar warning">
+                        <div class="notice-content">
+                            <span>⚠️</span>
+                            <span>配置有变更，需要重启</span>
+                        </div>
+                        <div class="notice-actions">
+                            <button class="btn btn-danger">立即重启</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 弹窗 -->
+                <div class="modal-overlay" style="position: absolute;">
+                    <div class="modal">
+                        <div class="modal-title">配置变更确认</div>
+                        <div class="change-list">
+                            <div class="change-item">
+                                <span class="change-key">服务端口</span>
+                                <div class="change-value">
+                                    <span class="value-old">4558</span>
+                                    <span>→</span>
+                                    <span class="value-new">8080</span>
+                                </div>
+                            </div>
+                            <div class="change-item">
+                                <span class="change-key">绑定地址</span>
+                                <div class="change-value">
+                                    <span class="value-old">localhost</span>
+                                    <span>→</span>
+                                    <span class="value-new">0.0.0.0</span>
+                                </div>
+                            </div>
+                            <div class="change-item">
+                                <span class="change-key">消息保留天数</span>
+                                <div class="change-value">
+                                    <span class="value-old">90</span>
+                                    <span>→</span>
+                                    <span class="value-new">30</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="background: #fef3c7; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 13px; color: #92400e;">
+                            ⚠️ 部分配置需要重启服务才能生效
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn btn-secondary" onclick="hideModal()">取消</button>
+                            <button class="btn btn-danger" onclick="confirmRestart()">确认并重启</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="showRestartModal()" style="margin-top: 16px;">
+                查看弹窗效果
+            </button>
+        </div>
+
+        <!-- 方案对比 -->
+        <div class="design-card" id="对比">
+            <div class="design-title">方案对比</div>
+            <table class="compare-table" style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+                <thead>
+                    <tr style="background: #f5f5f5;">
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0;">方案</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0;">优点</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0;">缺点</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; font-weight: 500;">侧边栏指示器</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; color: #059669;">
+                            • 用户一眼可见<br>
+                            • 不打扰正常操作<br>
+                            • 变体B可快捷重启
+                        </td>
+                        <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; color: #dc2626;">
+                            • 需要进入侧边栏才看到<br>
+                            • 可能与其他通知混淆
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; font-weight: 500;">设置页面提示</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; color: #059669;">
+                            • 信息完整明确<br>
+                            • 操作按钮清晰可见<br>
+                            • 支持"稍后"选项
+                        </td>
+                        <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; color: #dc2626;">
+                            • 需要主动进入设置页<br>
+                            • 可能错过及时重启
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; font-weight: 500;">变更详情弹窗</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; color: #059669;">
+                            • 变更对比清晰<br>
+                            • 避免误操作<br>
+                            • 专业感强
+                        </td>
+                        <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; color: #dc2626;">
+                            • 交互层级较深<br>
+                            • 变更多时阅读负担
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 推荐方案 -->
+        <div class="design-card" style="background: #f0fdf4; border-left: 4px solid #22c55e;">
+            <div class="design-title" style="color: #166534;">推荐方案</div>
+            <div class="design-desc" style="color: #166534;">
+                <strong>组合方案：侧边栏指示器 + 设置页面提示 + 变更确认弹窗</strong>
+            </div>
+            <ul style="margin-left: 20px; color: #166534; font-size: 14px; line-height: 2;">
+                <li><strong>侧边栏</strong>：显示红点徽章"需重启"，让用户随时知道状态</li>
+                <li><strong>设置页</strong>：进入后顶部显示警告条，明确列出哪些配置需重启</li>
+                <li><strong>弹窗</strong>：点击重启按钮后显示变更确认，避免误操作</li>
+                <li><strong>需重启标记</strong>：表单字段旁显示"(需重启)"标签，提前告知用户</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 动态插入弹窗的容器 -->
+    <div id="modal-container"></div>
+
+    <script>
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast success';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2500);
+        }
+
+        function showRestartModal() {
+            const container = document.getElementById('modal-container');
+            container.innerHTML = `
+                <div class="modal-overlay" onclick="if(event.target===this)hideModal()">
+                    <div class="modal">
+                        <div class="modal-title">配置变更确认</div>
+                        <div class="change-list">
+                            <div class="change-item">
+                                <span class="change-key">服务端口</span>
+                                <div class="change-value">
+                                    <span class="value-old">4558</span>
+                                    <span>→</span>
+                                    <span class="value-new">8080</span>
+                                </div>
+                            </div>
+                            <div class="change-item">
+                                <span class="change-key">绑定地址</span>
+                                <div class="change-value">
+                                    <span class="value-old">localhost</span>
+                                    <span>→</span>
+                                    <span class="value-new">0.0.0.0</span>
+                                </div>
+                            </div>
+                            <div class="change-item">
+                                <span class="change-key">消息保留天数</span>
+                                <div class="change-value">
+                                    <span class="value-old">90</span>
+                                    <span>→</span>
+                                    <span class="value-new">30</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="background: #fef3c7; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 13px; color: #92400e;">
+                            ⚠️ 部分配置需要重启服务才能生效
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn btn-secondary" onclick="hideModal()">取消</button>
+                            <button class="btn btn-danger" onclick="confirmRestart()">确认并重启</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function hideModal() {
+            document.getElementById('modal-container').innerHTML = '';
+        }
+
+        function confirmRestart() {
+            hideModal();
+            showToast('正在重启服务...');
+            setTimeout(() => {
+                showToast('服务已重启，请刷新页面');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

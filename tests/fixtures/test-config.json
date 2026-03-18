@@ -1,0 +1,12 @@
+{
+  "port": 4558,
+  "host": "0.0.0.0",
+  "dataDir": "~/.claude-chat",
+  "teamsPath": "~/.claude/teams",
+  "theme": "dark",
+  "retentionDays": 7,
+  "cleanupEnabled": true,
+  "cleanupTime": "00:00",
+  "desktopNotifications": true,
+  "soundEnabled": true
+}

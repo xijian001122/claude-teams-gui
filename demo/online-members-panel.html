@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线成员列表面板 - UI 设计方案</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 60px;
+            line-height: 1.8;
+            font-size: 16px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 50px;
+            color: #333;
+            font-size: 32px;
+        }
+
+        .design-card {
+            background: white;
+            border-radius: 16px;
+            padding: 48px;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            width: 100%;
+        }
+
+        .design-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1a1a1a;
+        }
+
+        .design-desc {
+            color: #666;
+            margin-bottom: 28px;
+            font-size: 16px;
+        }
+
+        /* 聊天界面模拟 */
+        .chat-mock {
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 2px solid #e0e0e0;
+            overflow: hidden;
+            transform: scale(1);
+            transform-origin: top left;
+        }
+
+        /* Header 样式 */
+        .chat-header {
+            height: 80px;
+            padding: 0 28px;
+            background: white;
+            border-bottom: 2px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .team-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        /* 在线人数触发器 */
+        .online-trigger {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: #f3f4f6;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #4b5563;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            position: relative;
+            margin-bottom: 8px;
+        }
+
+        .online-trigger:hover {
+            background: #e5e7eb;
+        }
+
+        .online-trigger.active {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .online-trigger .arrow {
+            font-size: 10px;
+            margin-left: 2px;
+            transition: transform 0.2s;
+        }
+
+        .online-trigger.active .arrow {
+            transform: rotate(180deg);
+        }
+
+        /* 下拉面板 */
+        .online-panel {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            min-width: 360px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            z-index: 100;
+            overflow: hidden;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+        }
+
+        .online-trigger.active .online-panel {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        /* 面板头部 */
+        .panel-header {
+            padding: 16px;
+            border-bottom: 1px solid #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .panel-summary {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        /* 状态分组 */
+        .status-group {
+            padding: 12px 0;
+        }
+
+        .status-group:not(:last-child) {
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .status-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 16px 8px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #6b7280;
+        }
+
+        .status-label .count {
+            background: #f3f4f6;
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+
+        /* 成员项 */
+        .member-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 20px;
+            transition: background 0.15s;
+        }
+
+        .member-item:hover {
+            background: #f9fafb;
+        }
+
+        .member-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .member-avatar .status-dot {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .status-dot.busy {
+            background: #ef4444;
+        }
+
+        .status-dot.idle {
+            background: #22c55e;
+        }
+
+        .status-dot.offline {
+            background: #d1d5db;
+        }
+
+        .member-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .member-name {
+            font-size: 15px;
+            font-weight: 500;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .member-status {
+            font-size: 13px;
+            color: #6b7280;
+            text-align: left;
+            padding-left: 0;
+            margin-left: 0;
+        }
+
+        .member-time {
+            font-size: 12px;
+            color: #9ca3af;
+            white-space: nowrap;
+        }
+
+        /* 状态标识 */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .badge.busy {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge.idle {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        /* 消息区域模拟 */
+        .chat-content {
+            padding: 24px;
+            height: 500px;
+            margin-bottom: 20px;
+        }
+
+        .message-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #9ca3af;
+            font-size: 15px;
+            gap: 12px;
+        }
+
+        .message-placeholder-icon {
+            width: 48px;
+            height: 48px;
+            opacity: 0.5;
+        }
+
+        /* 对比表格 */
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 15px;
+        }
+
+        .compare-table th,
+        .compare-table td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .compare-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #333;
+            font-size: 15px;
+        }
+
+        .compare-table td {
+            color: #666;
+        }
+
+        .pros { color: #059669; }
+        .cons { color: #dc2626; }
+
+        .highlight {
+            background: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        /* 推荐框 */
+        .recommend-box {
+            background: #f0fdf4;
+            border-left: 4px solid #22c55e;
+            padding: 16px;
+            border-radius: 4px;
+            margin-top: 16px;
+        }
+
+        /* 颜色变量 */
+        .color-blue { background: #3b82f6; }
+        .color-green { background: #10b981; }
+        .color-purple { background: #8b5cf6; }
+        .color-orange { background: #f59e0b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>👥 在线成员列表面板 UI 设计方案</h1>
+
+        <!-- 主要设计展示 -->
+        <div class="design-card">
+            <div class="design-title">方案：Header 下拉面板</div>
+            <div class="design-desc">在 ChatArea Header 显示在线人数，点击展开成员列表下拉面板，按状态分组显示</div>
+
+            <div class="chat-mock">
+                <!-- Header -->
+                <div class="chat-header">
+                    <div class="header-left">
+                        <div class="team-name">team-lead 的团队</div>
+                        <button class="online-trigger active" onclick="this.classList.toggle('active')">
+                            <span style="display: inline-flex; align-items: center; gap: 4px;">
+                                <i data-lucide="circle" style="width: 8px; height: 8px; color: #ef4444; fill: #ef4444;"></i>
+                                <span>2 执行中</span>
+                            </span>
+                            <span style="color: #9ca3af; margin: 0 2px;">·</span>
+                            <span style="display: inline-flex; align-items: center; gap: 4px;">
+                                <i data-lucide="circle" style="width: 8px; height: 8px; color: #22c55e; fill: #22c55e;"></i>
+                                <span>1 空闲</span>
+                            </span>
+                            <span class="arrow">▼</span>
+
+                            <!-- 下拉面板 -->
+                            <div class="online-panel">
+                                <div class="panel-header">
+                                    <span class="panel-title">团队成员</span>
+                                    <span class="panel-summary">3 人在线</span>
+                                </div>
+
+                                <!-- 执行中分组 -->
+                                <div class="status-group">
+                                    <div class="status-label">
+                                        <i data-lucide="circle" style="width: 14px; height: 14px; color: #ef4444; fill: #ef4444;"></i>
+                                        <span>执行中</span>
+                                        <span class="count">2</span>
+                                    </div>
+                                    <div class="member-item">
+                                        <div class="member-avatar color-blue">
+                                            T
+                                            <span class="status-dot busy"></span>
+                                        </div>
+                                        <div class="member-info">
+                                            <div class="member-name">
+                                                <strong style="font-size: 17px;">team-lead</strong>
+                                                <span class="badge busy">执行中</span>
+                                            </div>
+                                            <div class="member-status">正在处理用户的请求...</div>
+                                        </div>
+                                        <span class="member-time">5秒前</span>
+                                    </div>
+                                    <div class="member-item">
+                                        <div class="member-avatar color-green">
+                                            D
+                                            <span class="status-dot busy"></span>
+                                        </div>
+                                        <div class="member-info">
+                                            <div class="member-name">
+                                                <strong style="font-size: 17px;">developer</strong>
+                                                <span class="badge busy">执行中</span>
+                                            </div>
+                                            <div class="member-status">分析代码库中...</div>
+                                        </div>
+                                        <span class="member-time">12秒前</span>
+                                    </div>
+                                </div>
+
+                                <!-- 空闲分组 -->
+                                <div class="status-group">
+                                    <div class="status-label">
+                                        <i data-lucide="circle" style="width: 14px; height: 14px; color: #22c55e; fill: #22c55e;"></i>
+                                        <span>空闲</span>
+                                        <span class="count">1</span>
+                                    </div>
+                                    <div class="member-item">
+                                        <div class="member-avatar color-purple">
+                                            R
+                                            <span class="status-dot idle"></span>
+                                        </div>
+                                        <div class="member-info">
+                                            <div class="member-name">
+                                                <strong style="font-size: 17px;">reviewer</strong>
+                                            </div>
+                                            <div class="member-status">等待任务中</div>
+                                        </div>
+                                        <span class="member-time">5分钟前</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button style="padding: 10px; border-radius: 10px; border: none; background: #f3f4f6; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="moon" style="width: 20px; height: 20px; color: #4b5563;"></i>
+                        </button>
+                        <button style="padding: 10px; border-radius: 10px; border: none; background: #f3f4f6; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="info" style="width: 20px; height: 20px; color: #4b5563;"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 聊天内容区域 -->
+                <div class="chat-content">
+                    <div class="message-placeholder">
+                        <i data-lucide="message-square" class="message-placeholder-icon"></i>
+                        <span>聊天消息区域</span>
+                        <small style="font-size: 13px;">点击上方"2 执行中 · 1 空闲"可展开/收起面板</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 不同状态展示 -->
+        <div class="design-card">
+            <div class="design-title">状态定义</div>
+            <div class="design-desc">三种成员状态及其视觉表现</div>
+
+            <table class="compare-table">
+                <thead>
+                    <tr>
+                        <th>状态</th>
+                        <th>图标</th>
+                        <th>颜色</th>
+                        <th>定义</th>
+                        <th>显示内容</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>执行中</strong></td>
+                        <td><i data-lucide="circle" style="width: 14px; height: 14px; color: #ef4444; fill: #ef4444;"></i></td>
+                        <td style="color: #ef4444;">红色 #ef4444</td>
+                        <td>Agent 正在处理任务</td>
+                        <td>状态徽章 + 任务描述</td>
+                    </tr>
+                    <tr>
+                        <td><strong>空闲</strong></td>
+                        <td><i data-lucide="circle" style="width: 14px; height: 14px; color: #22c55e; fill: #22c55e;"></i></td>
+                        <td style="color: #22c55e;">绿色 #22c55e</td>
+                        <td>Agent 没有在执行任务</td>
+                        <td>最后活动时间</td>
+                    </tr>
+                    <tr>
+                        <td><strong>离线</strong></td>
+                        <td><i data-lucide="circle" style="width: 14px; height: 14px; color: #d1d5db; fill: #d1d5db;"></i></td>
+                        <td style="color: #d1d5db;">浅灰 #d1d5db</td>
+                        <td>Agent 进程未运行</td>
+                        <td>不显示在下拉面板中</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 状态转换 -->
+        <div class="design-card">
+            <div class="design-title">状态转换逻辑</div>
+            <div class="design-desc">基于文件系统活动和消息流的自动状态检测</div>
+
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; font-family: monospace; font-size: 13px; line-height: 2;">
+                <div style="margin-bottom: 16px;">
+                    <strong>检测逻辑：</strong>
+                </div>
+                <div>
+                    1. FileWatcher 检测到 inbox 有新消息<br>
+                    &nbsp;&nbsp;&nbsp;→ 该 Agent 标记为"执行中"<br>
+                    &nbsp;&nbsp;&nbsp;→ 广播 member_status 事件<br>
+                    <br>
+                    2. 30秒内无新消息/活动<br>
+                    &nbsp;&nbsp;&nbsp;→ 自动转为"空闲"<br>
+                    <br>
+                    3. Agent 进程停止<br>
+                    &nbsp;&nbsp;&nbsp;→ 标记为"离线"（不显示）
+                </div>
+            </div>
+        </div>
+
+        <!-- 交互说明 -->
+        <div class="design-card">
+            <div class="design-title">交互细节</div>
+            <div class="design-desc">下拉面板的交互行为和视觉反馈</div>
+
+            <table class="compare-table">
+                <thead>
+                    <tr>
+                        <th>交互</th>
+                        <th>行为</th>
+                        <th>视觉反馈</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>点击触发器</td>
+                        <td>展开/收起面板</td>
+                        <td>背景变蓝，箭头旋转</td>
+                    </tr>
+                    <tr>
+                        <td>点击外部</td>
+                        <td>自动关闭面板</td>
+                        <td>面板淡出</td>
+                    </tr>
+                    <tr>
+                        <td>悬停成员项</td>
+                        <td>高亮显示</td>
+                        <td>背景变为浅灰</td>
+                    </tr>
+                    <tr>
+                        <td>状态更新</td>
+                        <td>实时同步</td>
+                        <td>数字动画更新</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 实现要点 -->
+        <div class="design-card">
+            <div class="design-title">实现要点</div>
+            <div class="design-desc">前端组件结构参考</div>
+
+            <div style="background: #1f2937; color: #e5e7eb; padding: 20px; border-radius: 8px; font-family: monospace; font-size: 13px; overflow-x: auto;">
+<pre>// Header 组件结构
+&lt;div class="chat-header"&gt;
+  &lt;div class="header-left"&gt;
+    &lt;div class="team-name"&gt;{team.displayName}&lt;/div&gt;
+
+    &lt;!-- 在线人数触发器 --&gt;
+    &lt;OnlineMembersTrigger
+      busyCount={2}
+      idleCount={1}
+      onClick={togglePanel}
+    /&gt;
+
+    &lt;!-- 下拉面板 --&gt;
+    {isOpen && (
+      &lt;OnlineMembersPanel
+        members={members}
+        onClose={closePanel}
+      /&gt;
+    )}
+  &lt;/div&gt;
+&lt;/div&gt;
+
+// 状态管理
+const [memberStatus, setMemberStatus] = useState({
+  'team-lead': { status: 'busy', task: '正在处理...', updatedAt: Date.now() },
+  'developer': { status: 'busy', task: '分析代码库...', updatedAt: Date.now() },
+  'reviewer': { status: 'idle', updatedAt: Date.now() - 300000 }
+});</pre>
+            </div>
+        </div>
+
+        <!-- 推荐方案 -->
+        <div class="design-card">
+            <div class="design-title">⭐ 推荐方案</div>
+            <div class="design-desc">基于当前 Claude Chat 的设计，推荐 Header 下拉面板方案</div>
+
+            <div class="recommend-box">
+                <strong>推荐理由：</strong>
+                <ul style="margin: 8px 0 0 20px; color: #166534;">
+                    <li>与现有 ChatArea Header 设计兼容性好</li>
+                    <li>不占用聊天区域空间</li>
+                    <li>状态信息一目了然</li>
+                    <li>支持多标签页自动同步（通过 WebSocket）</li>
+                    <li>移动端和桌面端都能很好显示</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化 Lucide 图标
+        lucide.createIcons();
+
+        // 简单的点击外部关闭面板演示
+        document.addEventListener('click', function(e) {
+            const trigger = document.querySelector('.online-trigger');
+            if (!trigger.contains(e.target)) {
+                trigger.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>
