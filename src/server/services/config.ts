@@ -5,9 +5,9 @@ import { join } from 'path';
 import type { AppConfig, ConfigChange } from '@shared/types';
 import { DEFAULT_CONFIG } from '@shared/constants';
 
-// Configuration keys that require server restart
+// Configuration keys that require server restart when changed
 const RESTART_REQUIRED_KEYS = ['port', 'host', 'dataDir', 'teamsPath'] as const;
-const HOT_RELOAD_KEYS = ['retentionDays', 'theme', 'desktopNotifications', 'soundEnabled', 'cleanupEnabled', 'cleanupTime'] as const;
+const RUNTIME_CONFIG_KEYS = ['retentionDays', 'theme', 'desktopNotifications', 'soundEnabled', 'cleanupEnabled', 'cleanupTime'] as const;
 
 /**
  * 展开路径中的 ~ 为用户目录
@@ -20,7 +20,7 @@ function expandHomeDir(path: string): string {
 }
 
 type RestartRequiredKey = typeof RESTART_REQUIRED_KEYS[number];
-type HotReloadKey = typeof HOT_RELOAD_KEYS[number];
+type RuntimeConfigKey = typeof RUNTIME_CONFIG_KEYS[number];
 
 export class ConfigService {
   private config: AppConfig;
@@ -138,7 +138,7 @@ export class ConfigService {
 
   private detectChanges(oldConfig: AppConfig, newConfig: AppConfig): ConfigChange[] {
     const changes: ConfigChange[] = [];
-    const allKeys = [...RESTART_REQUIRED_KEYS, ...HOT_RELOAD_KEYS] as (keyof AppConfig)[];
+    const allKeys = [...RESTART_REQUIRED_KEYS, ...RUNTIME_CONFIG_KEYS] as (keyof AppConfig)[];
 
     for (const key of allKeys) {
       if (oldConfig[key] !== newConfig[key]) {

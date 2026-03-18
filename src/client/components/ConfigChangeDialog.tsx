@@ -28,10 +28,7 @@ export function ConfigChangeDialog({
   onClose,
   onConfirm
 }: ConfigChangeDialogProps) {
-  if (!isOpen) return null;
-
-  const restartChanges = changes.filter(c => c.requiresRestart);
-  const hotReloadChanges = changes.filter(c => !c.requiresRestart);
+  if (!isOpen || changes.length === 0) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -45,44 +42,26 @@ export function ConfigChangeDialog({
 
         {/* Change List */}
         <div className="px-6 py-4 max-h-64 overflow-y-auto">
-          {restartChanges.length > 0 && (
-            <div className="mb-4">
-              <h3 className="text-sm font-medium text-red-500 mb-2 flex items-center gap-1.5">
-                <Icon icon="alert-circle" size={14} />
-                需要重启生效
-              </h3>
-              <div className="space-y-2">
-                {restartChanges.map((change, index) => (
-                  <ChangeItem key={index} change={change} />
-                ))}
-              </div>
+          <div className="mb-4">
+            <h3 className="text-sm font-medium text-red-500 mb-2 flex items-center gap-1.5">
+              <Icon icon="alert-circle" size={14} />
+              需要重启生效
+            </h3>
+            <div className="space-y-2">
+              {changes.map((change, index) => (
+                <ChangeItem key={index} change={change} />
+              ))}
             </div>
-          )}
-
-          {hotReloadChanges.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-green-500 mb-2 flex items-center gap-1.5">
-                <Icon icon="check-circle" size={14} />
-                已自动生效
-              </h3>
-              <div className="space-y-2">
-                {hotReloadChanges.map((change, index) => (
-                  <ChangeItem key={index} change={change} />
-                ))}
-              </div>
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Warning */}
-        {restartChanges.length > 0 && (
-          <div className="px-6 py-3 bg-amber-50 dark:bg-amber-900/20 border-y border-amber-100 dark:border-amber-800">
-            <p className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
-              <Icon icon="alert-triangle" size={14} />
-              部分配置需要重启服务才能生效
-            </p>
-          </div>
-        )}
+        <div className="px-6 py-3 bg-amber-50 dark:bg-amber-900/20 border-y border-amber-100 dark:border-amber-800">
+          <p className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+            <Icon icon="alert-triangle" size={14} />
+            配置变更需要重启服务才能生效
+          </p>
+        </div>
 
         {/* Actions */}
         <div className="px-6 py-4 flex justify-end gap-3">
@@ -96,7 +75,7 @@ export function ConfigChangeDialog({
             onClick={onConfirm}
             className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors text-sm font-medium"
           >
-            {restartChanges.length > 0 ? '确认并重启' : '确认'}
+            确认并重启
           </button>
         </div>
       </div>
