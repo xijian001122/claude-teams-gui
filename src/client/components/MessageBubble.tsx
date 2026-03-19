@@ -19,7 +19,7 @@ interface MessageBubbleProps {
   member?: TeamMember;
   onAvatarClick?: (memberName: string) => void;
   currentTeam?: string;
-  onPermissionResponse?: (requestId: string, approve: boolean) => Promise<void>;
+  onPermissionResponse?: (requestId: string, approve: boolean, agentId: string) => Promise<void>;
 }
 
 function formatMessageContent(content: string): { type: 'text' | 'json'; display: string } {

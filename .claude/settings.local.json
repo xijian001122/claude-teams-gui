@@ -63,7 +63,8 @@
       "Bash(wget:*)",
       "Bash(bash -x scripts/start.sh 2>&1 | head -50)",
       "Bash(npx:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(git add:*)"
     ]
   },
   "hooks": {

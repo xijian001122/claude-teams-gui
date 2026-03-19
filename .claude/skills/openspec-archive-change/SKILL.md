@@ -82,12 +82,36 @@ Archive a completed change in the experimental workflow.
    mv openspec/changes/<name> openspec/changes/archive/YYYY-MM-DD-<name>
    ```
 
-6. **Display summary**
+6. **Create Git commit**
+
+   创建 Git 提交保存本次更新的所有文件：
+   ```bash
+   # 1. 检查本次归档产生的实际变更
+   git status
+
+   # 2. 添加实际变更的文件（根据 git status 结果）
+   git add <实际变更的文件>
+
+   # 3. 创建归档提交（必须使用 archive: 类型）
+   git commit -m "archive: <change-name> - 完成归档
+
+   - 保存本次更新的所有文件
+   - 添加设计文档归档
+   - 添加任务执行记录
+
+   归档路径: openspec/changes/archive/<change-name>/"
+
+   # 4. 推送到远程仓库
+   git push origin $(git branch --show-current)
+   ```
+
+8. **Display summary**
 
    Show archive completion summary including:
    - Change name
    - Schema that was used
    - Archive location
+   - Git commit status (committed/pushed)
    - Whether specs were synced (if applicable)
    - Note about any warnings (incomplete artifacts/tasks)
 
@@ -99,6 +123,7 @@ Archive a completed change in the experimental workflow.
 **Change:** <change-name>
 **Schema:** <schema-name>
 **Archived to:** openspec/changes/archive/YYYY-MM-DD-<name>/
+**Git Commit:** ✓ Committed and pushed
 **Specs:** ✓ Synced to main specs (or "No delta specs" or "Sync skipped")
 
 All artifacts complete. All tasks complete.

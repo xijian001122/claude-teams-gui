@@ -189,14 +189,15 @@ export function App() {
     console.log('Avatar clicked:', memberName);
   };
 
-  const handlePermissionResponse = async (requestId: string, approve: boolean) => {
+  const handlePermissionResponse = async (requestId: string, approve: boolean, agentId: string) => {
     if (!currentTeam) return;
 
     try {
       // Call API to send permission response
       await api.post(`/teams/${currentTeam}/permission-response`, {
         request_id: requestId,
-        approve
+        approve,
+        agent_id: agentId
       });
 
       // Update local messages state to reflect the response

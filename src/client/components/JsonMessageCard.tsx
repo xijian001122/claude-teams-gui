@@ -4,7 +4,7 @@ import { Icon } from './Icon';
 
 interface JsonMessageCardProps {
   message: Message;
-  onPermissionResponse?: (requestId: string, approve: boolean) => Promise<void>;
+  onPermissionResponse?: (requestId: string, approve: boolean, agentId: string) => Promise<void>;
 }
 
 type PermissionStatus = 'pending' | 'approved' | 'rejected';
@@ -171,7 +171,7 @@ function syntaxHighlight(json: string): string {
 
 interface PermissionRequestCardProps {
   prData: PermissionRequestData;
-  onPermissionResponse?: (requestId: string, approve: boolean) => Promise<void>;
+  onPermissionResponse?: (requestId: string, approve: boolean, agentId: string) => Promise<void>;
 }
 
 function PermissionRequestCard({ prData, onPermissionResponse }: PermissionRequestCardProps) {
@@ -182,7 +182,7 @@ function PermissionRequestCard({ prData, onPermissionResponse }: PermissionReque
     if (!onPermissionResponse || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await onPermissionResponse(prData.request_id, true);
+      await onPermissionResponse(prData.request_id, true, prData.agent_id);
       setStatus('approved');
     } catch (err) {
       console.error('Failed to approve permission:', err);
@@ -195,7 +195,7 @@ function PermissionRequestCard({ prData, onPermissionResponse }: PermissionReque
     if (!onPermissionResponse || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await onPermissionResponse(prData.request_id, false);
+      await onPermissionResponse(prData.request_id, false, prData.agent_id);
       setStatus('rejected');
     } catch (err) {
       console.error('Failed to reject permission:', err);

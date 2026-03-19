@@ -190,7 +190,7 @@ bash scripts/start.sh
 
 ### 归档提交规范（强制）
 
-**每次执行归档后，必须立即提交到 Git**:
+**每次执行归档后，必须立即创建 Git 提交保存本次更新的所有文件**:
 
 ```bash
 # 1. 检查本次归档产生的实际变更
@@ -204,11 +204,12 @@ git add <实际变更的文件2>
 # 3. 创建归档提交（必须使用 archive: 类型）
 git commit -m "archive: <change-name> - 完成归档
 
+- 保存本次更新的所有文件
 - 添加设计文档归档
 - 添加任务执行记录
 - 更新变更日志
 
-归档路径: docs/archive/<change-name>/"
+归档路径: openspec/changes/archive/<change-name>/"
 
 # 4. 推送到远程仓库
 git push origin $(git branch --show-current)

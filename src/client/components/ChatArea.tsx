@@ -15,7 +15,7 @@ interface ChatAreaProps {
   onAvatarClick: (memberName: string) => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
-  onPermissionResponse?: (requestId: string, approve: boolean) => Promise<void>;
+  onPermissionResponse?: (requestId: string, approve: boolean, agentId: string) => Promise<void>;
 }
 
 export function ChatArea({
