@@ -83,6 +83,8 @@ async function request<T>(
   path: string,
   body?: any
 ): Promise<ApiResponse<T>> {
+  // 确保端口发现完成后再发起请求
+  await initBackendPort();
   const API_BASE = getApiBase();
   const url = `${API_BASE}${path}`;
 

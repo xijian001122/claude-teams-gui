@@ -3,6 +3,7 @@ import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs';
 import type { Message, Team, TeamMember } from '@shared/types';
 import { DatabaseService } from '../db';
 import { generateAvatarColor, extractAvatarLetter } from '@shared/utils/avatar';
+import { getDirectoryBirthTime, extractProjectFromCwd } from '../utils/file-stats';
 
 export interface DataSyncOptions {
   claudeTeamsPath: string;
@@ -71,6 +72,14 @@ export class DataSyncService {
     // Read team config
     const config = JSON.parse(readFileSync(configPath, 'utf8'));
 
+    // Extract team instance ID from directory birth time
+    const teamInstance = getDirectoryBirthTime(teamPath);
+
+    // Extract source project from first member's cwd
+    const sourceProject = config.members && config.members.length > 0
+      ? extractProjectFromCwd(config.members[0].cwd)
+      : undefined;
+
     // Build team object
     const team: Team = {
       name: teamName,
@@ -84,14 +93,15 @@ export class DataSyncService {
       config: {
         notificationEnabled: true
       },
-      allowCrossTeamMessages: config.allowCrossTeamMessages || false
+      allowCrossTeamMessages: config.allowCrossTeamMessages || false,
+      teamInstance
     };
 
     // Save to database
     await this.db.upsertTeam(team);
 
-    // Sync existing messages
-    await this.syncTeamMessages(teamName);
+    // Sync existing messages (pass instance and project info)
+    await this.syncTeamMessages(teamName, teamInstance, sourceProject);
 
     return team;
   }
@@ -134,7 +144,7 @@ export class DataSyncService {
   /**
    * Sync messages from all inboxes
    */
-  private async syncTeamMessages(teamName: string): Promise<number> {
+  private async syncTeamMessages(teamName: string, teamInstance?: string, sourceProject?: string): Promise<number> {
     const inboxesPath = join(this.claudeTeamsPath, teamName, 'inboxes');
 
     if (!existsSync(inboxesPath)) {
@@ -149,7 +159,7 @@ export class DataSyncService {
 
     for (const file of inboxFiles) {
       const member = file.replace('.json', '');
-      const count = await this.syncInbox(teamName, member);
+      const count = await this.syncInbox(teamName, member, teamInstance, sourceProject);
       totalSynced += count;
     }
 
@@ -159,7 +169,7 @@ export class DataSyncService {
   /**
    * Sync a single inbox file
    */
-  private async syncInbox(teamName: string, member: string): Promise<number> {
+  private async syncInbox(teamName: string, member: string, teamInstance?: string, sourceProject?: string): Promise<number> {
     const inboxPath = join(this.claudeTeamsPath, teamName, 'inboxes', `${member}.json`);
 
     if (!existsSync(inboxPath)) {
@@ -188,7 +198,7 @@ export class DataSyncService {
         }
 
         try {
-          const message = this.convertToMessage(teamName, member, i, msg);
+          const message = this.convertToMessage(teamName, member, i, msg, teamInstance, sourceProject);
           const inserted = await this.db.insertMessageIfNew(message);
           if (inserted) {
             synced++;
@@ -215,7 +225,7 @@ export class DataSyncService {
   /**
    * Convert Claude message format to our format
    */
-  private convertToMessage(team: string, inbox: string, index: number, msg: any): Message {
+  private convertToMessage(team: string, inbox: string, index: number, msg: any, teamInstance?: string, sourceProject?: string): Message {
     const isStructured = typeof msg.text === 'string' &&
       (msg.text.startsWith('{') || msg.text.startsWith('['));
 
@@ -263,7 +273,9 @@ export class DataSyncService {
         messageIndex: index,
         timestamp: msg.timestamp || new Date().toISOString()
       },
-      metadata: msg.summary ? { taskId: msg.summary } : undefined
+      metadata: msg.summary ? { taskId: msg.summary } : undefined,
+      teamInstance,
+      sourceProject
     };
   }
 
@@ -293,6 +305,10 @@ export class DataSyncService {
    * Send a message from user
    */
   async sendMessage(teamName: string, to: string | null, content: string, contentType: string = 'text'): Promise<Message> {
+    // Get team's current teamInstance
+    const team = await this.db.getTeam(teamName);
+    const teamInstance = team?.teamInstance;
+
     const message: Message = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       localId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -302,7 +318,8 @@ export class DataSyncService {
       to,
       content,
       contentType: contentType as any,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      teamInstance
     };
 
     // Save to database

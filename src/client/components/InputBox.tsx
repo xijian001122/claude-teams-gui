@@ -208,9 +208,9 @@ export function InputBox({ members, crossTeamTargets, onSend, disabled }: InputB
           value={content}
           onInput={handleInput}
           onKeyDown={handleKeyDown}
-          placeholder="输入消息... 使用 @ 提及成员"
+          placeholder={disabled ? "此团队已归档，无法发送消息" : "输入消息... 使用 @ 提及成员"}
           disabled={disabled}
-          className="input-box flex-1"
+          className={`input-box flex-1 ${disabled ? 'bg-[var(--bg-secondary)] opacity-60 cursor-not-allowed' : ''}`}
           rows={1}
         />
         {crossTeamTargets.length > 0 && (

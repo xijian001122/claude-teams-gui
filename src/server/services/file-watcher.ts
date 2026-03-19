@@ -1,23 +1,29 @@
 import { watch, FSWatcher } from 'chokidar';
 import { join } from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import type { DataSyncService } from './data-sync';
+import { getDirectoryBirthTime, extractProjectFromCwd } from '../utils/file-stats';
+import type { FastifyInstance } from 'fastify';
 
 export interface FileWatcherOptions {
   claudeTeamsPath: string;
   dataSync: DataSyncService;
+  fastify: FastifyInstance;
   onMemberActivity?: (teamName: string, memberName: string, messageType?: string) => void;
 }
 
 export class FileWatcherService {
   private watchers: Map<string, FSWatcher> = new Map();
+  private teamInstances: Map<string, string> = new Map(); // Track current instance ID for each team
   private claudeTeamsPath: string;
   private dataSync: DataSyncService;
+  private fastify: FastifyInstance;
   private onMemberActivity?: (teamName: string, memberName: string, messageType?: string) => void;
 
   constructor(options: FileWatcherOptions) {
     this.claudeTeamsPath = options.claudeTeamsPath;
     this.dataSync = options.dataSync;
+    this.fastify = options.fastify;
     this.onMemberActivity = options.onMemberActivity;
   }
 
@@ -77,7 +83,37 @@ export class FileWatcherService {
    * Watch a specific team's inboxes
    */
   private watchTeam(teamName: string): void {
-    const inboxesPath = join(this.claudeTeamsPath, teamName, 'inboxes');
+    const teamPath = join(this.claudeTeamsPath, teamName);
+    const inboxesPath = join(teamPath, 'inboxes');
+
+    // Track team instance
+    const currentInstance = getDirectoryBirthTime(teamPath);
+    const oldInstance = this.teamInstances.get(teamName);
+
+    if (oldInstance && oldInstance !== currentInstance) {
+      // Team directory was recreated - instance changed!
+      console.log(`[FileWatcher] Team instance changed: ${teamName} (${oldInstance} -> ${currentInstance})`);
+
+      // Extract source project from config
+      let sourceProject: string | undefined;
+      const configPath = join(teamPath, 'config.json');
+      if (existsSync(configPath)) {
+        try {
+          const config = JSON.parse(readFileSync(configPath, 'utf8'));
+          if (config.members && config.members.length > 0) {
+            sourceProject = extractProjectFromCwd(config.members[0].cwd);
+          }
+        } catch (err) {
+          console.error('[FileWatcher] Error reading team config:', err);
+        }
+      }
+
+      // Broadcast team_instance_changed event
+      this.broadcastTeamInstanceChanged(teamName, oldInstance, currentInstance, sourceProject || 'unknown');
+    }
+
+    // Update tracked instance
+    this.teamInstances.set(teamName, currentInstance);
 
     const watcher = watch(`${inboxesPath}/*.json`, {
       persistent: true,
@@ -137,6 +173,36 @@ export class FileWatcherService {
       watcher.close();
       this.watchers.delete(teamName);
     }
+    // Clean up instance tracking
+    this.teamInstances.delete(teamName);
+  }
+
+  /**
+   * Broadcast team_instance_changed event to WebSocket clients
+   */
+  private broadcastTeamInstanceChanged(teamName: string, oldInstance: string, newInstance: string, sourceProject: string): void {
+    const wsServer = this.fastify.websocketServer;
+    if (!wsServer || !wsServer.clients) {
+      return;
+    }
+
+    const eventData = JSON.stringify({
+      type: 'team_instance_changed',
+      team: teamName,
+      oldInstance,
+      newInstance,
+      sourceProject
+    });
+
+    let sentCount = 0;
+    wsServer.clients.forEach((client: any) => {
+      if (client.readyState === 1) { // WebSocket.OPEN
+        client.send(eventData);
+        sentCount++;
+      }
+    });
+
+    console.log(`[WebSocket] Broadcasted team_instance_changed to ${sentCount} clients`);
   }
 
   /**

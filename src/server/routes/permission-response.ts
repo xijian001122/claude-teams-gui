@@ -99,6 +99,11 @@ export async function permissionResponseRoutes(
 
       console.log(`[PermissionResponse] Written to ${body.agent_id}'s inbox: ${body.approve ? 'approved' : 'rejected'} ${body.request_id}`);
 
+      // Update the permission_request message status in the database
+      const newStatus = body.approve ? 'approved' : 'rejected';
+      await db.updatePermissionRequestStatus(name, body.request_id, newStatus);
+      console.log(`[PermissionResponse] Updated database status to ${newStatus} for request ${body.request_id}`);
+
       reply.status(201);
       return {
         success: true,

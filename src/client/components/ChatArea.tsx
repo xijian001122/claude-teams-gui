@@ -1,16 +1,17 @@
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Team, Message, TeamMember, MemberStatusInfo } from '@shared/types';
 import { MessageBubble, DateDivider } from './MessageBubble';
 import { InputBox } from './InputBox';
 import { Icon } from './Icon';
 import { OnlineMembersTrigger } from './OnlineMembersTrigger';
-import { isSameDay, parseISO } from 'date-fns';
+import { isSameDay, parseISO, format } from 'date-fns';
 
 interface ChatAreaProps {
   team: Team | null;
   messages: Message[];
   memberStatuses: MemberStatusInfo[];
   crossTeamTargets: Team[];
+  archivedTeams: Team[];
   onSendMessage: (content: string, to?: string) => void;
   onAvatarClick: (memberName: string) => void;
   theme: 'light' | 'dark';
@@ -18,18 +19,52 @@ interface ChatAreaProps {
   onPermissionResponse?: (requestId: string, approve: boolean, agentId: string) => Promise<void>;
 }
 
+// Visual divider between team instances
+function InstanceDivider({ timestamp, instanceIndex, onToggle, isExpanded, isLatest }: {
+  timestamp: string;
+  instanceIndex: number;
+  onToggle: () => void;
+  isExpanded: boolean;
+  isLatest: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-4 my-2">
+      <div className="flex-1 h-px bg-[var(--border-color)]" />
+      <div className="flex flex-col items-center gap-1">
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-color)] text-xs text-[var(--text-secondary)]">
+          <Icon icon="refresh-cw" size={12} />
+          <span>{isLatest ? '当前实例' : '团队已重建'}</span>
+          <span className="text-[var(--text-tertiary)]">·</span>
+          <span>{format(parseISO(timestamp), 'MM/dd HH:mm')}</span>
+        </div>
+        <button
+          onClick={onToggle}
+          className="text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors underline underline-offset-2"
+        >
+          {isExpanded ? '折叠消息' : `展开实例 #${instanceIndex} 消息`}
+        </button>
+      </div>
+      <div className="flex-1 h-px bg-[var(--border-color)]" />
+    </div>
+  );
+}
+
 export function ChatArea({
   team,
   messages,
   memberStatuses,
   crossTeamTargets,
+  archivedTeams,
   onSendMessage,
   onAvatarClick,
   theme,
   onToggleTheme,
   onPermissionResponse
 }: ChatAreaProps) {
+  const isReadOnly = team ? archivedTeams.some(t => t.name === team.name) : false;
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Track which instances are collapsed (by instance id) - default all expanded
+  const [collapsedInstances, setCollapsedInstances] = useState<Set<string>>(new Set());
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -40,36 +75,91 @@ export function ChatArea({
     return team?.members.find(m => m.name === name);
   };
 
-  // Group messages by date
-  const groupedMessages: Array<{ type: 'date'; date: Date } | { type: 'message'; message: Message; showAvatar: boolean }> = [];
+  const toggleInstance = (instanceId: string) => {
+    setCollapsedInstances(prev => {
+      const next = new Set(prev);
+      if (next.has(instanceId)) {
+        next.delete(instanceId);
+      } else {
+        next.add(instanceId);
+      }
+      return next;
+    });
+  };
 
-  messages.forEach((message, index) => {
+  // Group messages by instance (oldest → newest order)
+  const instanceOrder: string[] = [];
+  const instanceMessages: Map<string, Message[]> = new Map();
+
+  messages.forEach(message => {
     // Skip idle notifications
     if (message.content.trim().startsWith('{') && message.content.trim().endsWith('}')) {
       try {
         const parsed = JSON.parse(message.content);
         if (parsed.type === 'idle_notification') {
-          return; // Skip this message
+          return;
         }
       } catch {
         // Not valid JSON, continue processing
       }
     }
 
-    const messageDate = parseISO(message.timestamp);
-
-    // Add date divider if first message or different day
-    if (index === 0 || !isSameDay(messageDate, parseISO(messages[index - 1].timestamp))) {
-      groupedMessages.push({ type: 'date', date: messageDate });
+    // Treat null/undefined teamInstance as current instance (not __legacy__)
+    // Messages from UI or with missing teamInstance should be grouped with the latest instance
+    const instance = message.teamInstance || '__current__';
+    if (!instanceMessages.has(instance)) {
+      instanceMessages.set(instance, []);
+      instanceOrder.push(instance);
     }
+    instanceMessages.get(instance)!.push(message);
+  });
 
-    // Determine if we should show avatar
-    const prevMessage = messages[index - 1];
-    const showAvatar = !prevMessage ||
-      prevMessage.from !== message.from ||
-      !isSameDay(parseISO(prevMessage.timestamp), messageDate);
+  // Build flat render list with instance dividers
+  type RenderItem =
+    | { type: 'date'; date: Date; key: string }
+    | { type: 'message'; message: Message; showAvatar: boolean }
+    | { type: 'instance_divider'; instanceId: string; timestamp: string; instanceIndex: number; isExpanded: boolean; isLatest: boolean };
 
-    groupedMessages.push({ type: 'message', message, showAvatar });
+  const groupedMessages: RenderItem[] = [];
+  const lastIndex = instanceOrder.length - 1;
+
+  instanceOrder.forEach((instanceId, orderIndex) => {
+    const isLatest = orderIndex === lastIndex;
+    // Latest instance: expanded by default (collapsed only if explicitly toggled)
+    // Older instances: collapsed by default (expanded only if explicitly toggled)
+    const isExpanded = isLatest
+      ? !collapsedInstances.has(instanceId)
+      : collapsedInstances.has(instanceId);
+
+    const msgs = instanceMessages.get(instanceId) || [];
+    const dividerTimestamp = msgs[0]?.timestamp || new Date().toISOString();
+
+    // Every instance gets a divider above it
+    groupedMessages.push({
+      type: 'instance_divider',
+      instanceId,
+      timestamp: dividerTimestamp,
+      instanceIndex: orderIndex + 1,
+      isExpanded,
+      isLatest
+    });
+
+    if (isExpanded) {
+      msgs.forEach((message, index) => {
+        const messageDate = parseISO(message.timestamp);
+        const prevMsg = index === 0 ? null : msgs[index - 1];
+
+        if (index === 0 || !isSameDay(messageDate, parseISO(prevMsg!.timestamp))) {
+          groupedMessages.push({ type: 'date', date: messageDate, key: `${instanceId}-date-${index}` });
+        }
+
+        const showAvatar = !prevMsg ||
+          prevMsg.from !== message.from ||
+          !isSameDay(parseISO(prevMsg.timestamp), messageDate);
+
+        groupedMessages.push({ type: 'message', message, showAvatar });
+      });
+    }
   });
 
   if (!team) {
@@ -116,6 +206,14 @@ export function ChatArea({
         </div>
       </div>
 
+      {/* Read-only banner for archived teams */}
+      {isReadOnly && (
+        <div className="px-6 py-2 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-700 flex items-center gap-2 text-yellow-800 dark:text-yellow-300 text-sm">
+          <Icon icon="archive" size={16} />
+          <span>此团队已归档，仅供查看</span>
+        </div>
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         {messages.length === 0 ? (
@@ -126,7 +224,20 @@ export function ChatArea({
           <div className="space-y-1">
             {groupedMessages.map((item, index) => {
               if (item.type === 'date') {
-                return <DateDivider key={`date-${index}`} date={item.date} />;
+                return <DateDivider key={item.key || `date-${index}`} date={item.date} />;
+              }
+
+              if (item.type === 'instance_divider') {
+                return (
+                  <InstanceDivider
+                    key={`instance-divider-${item.instanceId}`}
+                    timestamp={item.timestamp}
+                    instanceIndex={item.instanceIndex}
+                    isExpanded={item.isExpanded}
+                    isLatest={item.isLatest}
+                    onToggle={() => toggleInstance(item.instanceId)}
+                  />
+                );
               }
 
               const { message, showAvatar } = item;
@@ -156,7 +267,7 @@ export function ChatArea({
         members={team.members}
         crossTeamTargets={crossTeamTargets}
         onSend={onSendMessage}
-        disabled={!team}
+        disabled={!team || isReadOnly}
       />
     </div>
   );

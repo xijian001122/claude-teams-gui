@@ -28,6 +28,8 @@ export interface Message {
   claudeRef?: ClaudeRef;
   metadata?: MessageMetadata;
   originalTeam?: string;
+  teamInstance?: string;
+  sourceProject?: string;
 }
 
 export interface ClaudeRef {
@@ -60,6 +62,7 @@ export interface Team {
   members: TeamMember[];
   config: TeamConfig;
   allowCrossTeamMessages: boolean;
+  teamInstance?: string;
 }
 
 export interface TeamMember {
@@ -126,6 +129,7 @@ export interface GetMessagesQuery {
   before?: string;
   limit?: number;
   to?: string;
+  instance?: string; // Filter by team instance ID
 }
 
 export interface SendMessageBody {
@@ -168,6 +172,8 @@ export interface ServerToClientEvents {
   config_updated: (data: ConfigUpdateEvent) => void;
   /** Fired when member status changes */
   member_status: (data: { team: string; members: MemberStatusInfo[] }) => void;
+  /** Fired when a team directory is recreated (new instance) */
+  team_instance_changed: (data: { team: string; oldInstance: string | null; newInstance: string; sourceProject: string }) => void;
 }
 
 export interface ClientToServerEvents {

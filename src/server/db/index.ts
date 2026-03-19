@@ -49,8 +49,9 @@ export class DatabaseService {
         INSERT OR IGNORE INTO messages (
           id, local_id, team, from_member, from_type, to_member,
           content, content_type, timestamp, edited_at, deleted_at,
-          claude_team, claude_inbox, claude_index, claude_timestamp, metadata, original_team
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          claude_team, claude_inbox, claude_index, claude_timestamp, metadata, original_team,
+          team_instance_id, source_project
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       stmt.run(
@@ -71,6 +72,8 @@ export class DatabaseService {
         message.claudeRef?.timestamp || null,
         message.metadata ? JSON.stringify(message.metadata) : null,
         message.originalTeam || null,
+        message.teamInstance || null,
+        message.sourceProject || null,
         (err: Error | null) => {
           stmt.finalize();
           if (err) reject(err);
@@ -87,8 +90,9 @@ export class DatabaseService {
         INSERT OR IGNORE INTO messages (
           id, local_id, team, from_member, from_type, to_member,
           content, content_type, timestamp, edited_at, deleted_at,
-          claude_team, claude_inbox, claude_index, claude_timestamp, metadata, original_team
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          claude_team, claude_inbox, claude_index, claude_timestamp, metadata, original_team,
+          team_instance_id, source_project
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       stmt.run(
@@ -109,6 +113,8 @@ export class DatabaseService {
         message.claudeRef?.timestamp || null,
         message.metadata ? JSON.stringify(message.metadata) : null,
         message.originalTeam || null,
+        message.teamInstance || null,
+        message.sourceProject || null,
         function(this: { changes: number }, err: Error | null) {
           stmt.finalize();
           if (err) reject(err);
@@ -122,9 +128,10 @@ export class DatabaseService {
     before?: string;
     limit?: number;
     to?: string;
+    instance?: string;
   } = {}): Promise<Message[]> {
     return new Promise((resolve, reject) => {
-      const { before, limit = 50, to } = options;
+      const { before, limit = 50, to, instance } = options;
 
       let sql = `
         SELECT * FROM messages
@@ -143,6 +150,17 @@ export class DatabaseService {
         } else {
           sql += ' AND to_member = ?';
           params.push(to);
+        }
+      }
+
+      if (instance !== undefined) {
+        if (instance === null || instance === 'null') {
+          // Filter for messages without instance (backward compatibility)
+          sql += ' AND team_instance_id IS NULL';
+        } else {
+          // Filter for specific instance
+          sql += ' AND team_instance_id = ?';
+          params.push(instance);
         }
       }
 
@@ -205,12 +223,79 @@ export class DatabaseService {
     });
   }
 
+  // Update permission_request message status in content JSON
+  updatePermissionRequestStatus(team: string, requestId: string, status: 'approved' | 'rejected'): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Find message by content containing the request_id and type permission_request
+      const sql = `
+        SELECT id, content FROM messages
+        WHERE team = ? AND deleted_at IS NULL
+          AND content LIKE '%"type":"permission_request"%'
+          AND content LIKE ?
+        LIMIT 1
+      `;
+      this.db.get(sql, [team, `%request_id%${requestId}%`], (err, row: any) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        if (!row) {
+          // No matching message found - permission request may have been already processed
+          resolve();
+          return;
+        }
+        try {
+          const content = JSON.parse(row.content);
+          if (content.type === 'permission_request' && content.request_id === requestId) {
+            content.status = status;
+            const updateSql = 'UPDATE messages SET content = ? WHERE id = ?';
+            this.db.run(updateSql, [JSON.stringify(content), row.id], (updateErr) => {
+              if (updateErr) reject(updateErr);
+              else resolve();
+            });
+          } else {
+            resolve();
+          }
+        } catch (parseErr) {
+          reject(parseErr);
+        }
+      });
+    });
+  }
+
+  // Fix null teamInstance messages - update all messages with null team_instance_id
+  fixNullTeamInstance(teamName: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      // Get the team's teamInstance
+      this.db.get('SELECT team_instance_id FROM teams WHERE name = ?', [teamName], (err, row: any) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        if (!row || !row.team_instance_id) {
+          resolve(0); // No teamInstance to set
+          return;
+        }
+
+        const teamInstance = row.team_instance_id;
+        this.db.run(
+          'UPDATE messages SET team_instance_id = ? WHERE team = ? AND team_instance_id IS NULL',
+          [teamInstance, teamName],
+          function(updateErr) {
+            if (updateErr) reject(updateErr);
+            else resolve(this.changes);
+          }
+        );
+      });
+    });
+  }
+
   // Team operations
   upsertTeam(team: Team): Promise<void> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
-        INSERT INTO teams (name, display_name, status, created_at, archived_at, last_activity, message_count, members, config, allow_cross_team_messages)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO teams (name, display_name, status, created_at, archived_at, last_activity, message_count, members, config, allow_cross_team_messages, team_instance_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(name) DO UPDATE SET
           display_name = excluded.display_name,
           status = excluded.status,
@@ -219,7 +304,8 @@ export class DatabaseService {
           message_count = excluded.message_count,
           members = excluded.members,
           config = excluded.config,
-          allow_cross_team_messages = excluded.allow_cross_team_messages
+          allow_cross_team_messages = excluded.allow_cross_team_messages,
+          team_instance_id = excluded.team_instance_id
       `);
 
       stmt.run(
@@ -233,6 +319,7 @@ export class DatabaseService {
         JSON.stringify(team.members),
         JSON.stringify(team.config),
         team.allowCrossTeamMessages ? 1 : 0,
+        team.teamInstance || null,
         (err: Error | null) => {
           stmt.finalize();
           if (err) reject(err);
@@ -373,7 +460,9 @@ export class DatabaseService {
         timestamp: row.claude_timestamp
       } : undefined,
       metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
-      originalTeam: row.original_team || undefined
+      originalTeam: row.original_team || undefined,
+      teamInstance: row.team_instance_id || undefined,
+      sourceProject: row.source_project || undefined
     };
   }
 
@@ -390,7 +479,8 @@ export class DatabaseService {
       unreadCount: 0,
       members: JSON.parse(row.members),
       config,
-      allowCrossTeamMessages: row.allow_cross_team_messages === 1
+      allowCrossTeamMessages: row.allow_cross_team_messages === 1,
+      teamInstance: row.team_instance_id || undefined
     };
   }
 

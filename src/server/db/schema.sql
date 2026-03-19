@@ -18,7 +18,9 @@ CREATE TABLE IF NOT EXISTS messages (
   claude_index INTEGER,
   claude_timestamp TEXT,
   metadata TEXT,
-  original_team TEXT
+  original_team TEXT,
+  team_instance_id TEXT,
+  source_project TEXT
 );
 
 -- Indexes for messages
@@ -26,6 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_team_time ON messages(team, timestamp DE
 CREATE INDEX IF NOT EXISTS idx_messages_from ON messages(from_member);
 CREATE INDEX IF NOT EXISTS idx_messages_to ON messages(to_member) WHERE to_member IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_messages_claude_ref ON messages(claude_team, claude_inbox);
+CREATE INDEX IF NOT EXISTS idx_messages_team_instance ON messages(team, team_instance_id) WHERE team_instance_id IS NOT NULL;
 
 -- Teams table
 CREATE TABLE IF NOT EXISTS teams (
@@ -38,7 +41,8 @@ CREATE TABLE IF NOT EXISTS teams (
   message_count INTEGER DEFAULT 0,
   members TEXT NOT NULL,
   config TEXT,
-  allow_cross_team_messages INTEGER DEFAULT 0
+  allow_cross_team_messages INTEGER DEFAULT 0,
+  team_instance_id TEXT
 );
 
 -- Indexes for teams
