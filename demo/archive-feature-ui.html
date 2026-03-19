@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>归档功能 UI 效果图</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f0f0f;
+            color: #e5e5e5;
+            line-height: 1.5;
+        }
+
+        .page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        .page-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+        .page-sub {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 32px;
+        }
+
+        .toc {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+        .toc a {
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: #1e1e1e;
+            border: 1px solid #333;
+            color: #aaa;
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .toc a:hover {
+            background: #2d2d2d;
+            color: #fff;
+            border-color: #555;
+        }
+
+        .design-section {
+            margin-bottom: 48px;
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+        .section-desc {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 20px;
+        }
+
+        /* App Mock */
+        .app-mock {
+            display: flex;
+            height: 560px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #2a2a2a;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 272px;
+            flex-shrink: 0;
+            background: #161616;
+            border-right: 1px solid #222;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid #222;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .sidebar-header span {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+        }
+        .wifi-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #22c55e;
+        }
+
+        .new-team-btn {
+            margin: 10px 12px;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px dashed #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #666;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .team-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .team-item {
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: background 0.15s;
+            border-radius: 8px;
+            margin: 2px 6px;
+        }
+        .team-item:hover { background: #1f1f1f; }
+        .team-item.active { background: #1a2a3a; }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .avatar.sm {
+            width: 30px;
+            height: 30px;
+            font-size: 12px;
+        }
+        .online-dot {
+            width: 9px;
+            height: 9px;
+            background: #22c55e;
+            border-radius: 50%;
+            border: 2px solid #161616;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+        }
+
+        .team-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .team-name-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .team-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #e5e5e5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .team-time {
+            font-size: 11px;
+            color: #555;
+            flex-shrink: 0;
+        }
+        .team-preview {
+            font-size: 12px;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Archive section */
+        .archive-section {
+            border-top: 1px solid #222;
+        }
+
+        .archive-toggle {
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background 0.15s;
+            user-select: none;
+        }
+        .archive-toggle:hover { background: #1a1a1a; }
+        .archive-toggle-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #888;
+            font-size: 13px;
+        }
+        .archive-count-badge {
+            font-size: 11px;
+            color: #555;
+        }
+        .chevron {
+            font-size: 10px;
+            color: #555;
+            transition: transform 0.2s;
+        }
+        .chevron.open { transform: rotate(180deg); }
+
+        .archive-list {
+            overflow: hidden;
+            transition: max-height 0.25s ease;
+        }
+        .archive-list.collapsed { max-height: 0; }
+        .archive-list.expanded { max-height: 400px; }
+
+        .archive-team-item {
+            padding: 8px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: background 0.15s;
+            border-radius: 8px;
+            margin: 2px 6px;
+        }
+        .archive-team-item:hover { background: #1a1a1a; }
+        .archive-team-item.active { background: #1e1a2a; }
+
+        .archive-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #fff;
+            opacity: 0.6;
+            flex-shrink: 0;
+        }
+        .archive-team-info { flex: 1; min-width: 0; }
+        .archive-team-name {
+            font-size: 12px;
+            font-weight: 500;
+            color: #888;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .archive-team-date {
+            font-size: 11px;
+            color: #555;
+        }
+
+        .archive-badge {
+            font-size: 10px;
+            padding: 2px 5px;
+            border-radius: 4px;
+            background: #2a2020;
+            color: #8b6060;
+            flex-shrink: 0;
+        }
+
+        .settings-section {
+            border-top: 1px solid #222;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #666;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .settings-section:hover { color: #999; }
+
+        /* Chat Area */
+        .chat-area {
+            flex: 1;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid #1e1e1e;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .chat-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .chat-team-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+        }
+        .chat-team-sub {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .archive-readonly-banner {
+            background: #1e1a10;
+            border: 1px solid #3d3010;
+            border-radius: 8px;
+            padding: 8px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #a0880a;
+            margin: 8px 16px 0;
+        }
+
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .message-sender {
+            font-size: 11px;
+            color: #666;
+            padding: 0 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sender-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .message-bubble {
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            line-height: 1.5;
+            max-width: 70%;
+            word-break: break-word;
+        }
+        .message-bubble.agent {
+            background: #1e1e1e;
+            color: #d5d5d5;
+            border: 1px solid #2a2a2a;
+            align-self: flex-start;
+        }
+        .message-bubble.user {
+            background: #1a3a5c;
+            color: #c5dff8;
+            border: 1px solid #1e4a6e;
+            align-self: flex-end;
+        }
+        .message-bubble.system {
+            background: #1a1a1a;
+            color: #666;
+            border: 1px dashed #2a2a2a;
+            font-size: 12px;
+            align-self: center;
+            max-width: 80%;
+            text-align: center;
+        }
+
+        .message-time {
+            font-size: 10px;
+            color: #555;
+            padding: 0 4px;
+        }
+
+        .date-divider {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #555;
+            font-size: 11px;
+            margin: 8px 0;
+        }
+        .date-divider::before, .date-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #222;
+        }
+
+        .input-area {
+            padding: 12px 16px;
+            border-top: 1px solid #1e1e1e;
+        }
+        .input-box {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .input-placeholder {
+            flex: 1;
+            font-size: 13px;
+            color: #555;
+        }
+
+        /* 说明卡片 */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .info-card {
+            background: #161616;
+            border: 1px solid #222;
+            border-radius: 10px;
+            padding: 16px;
+        }
+        .info-card-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #aaa;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .info-card-title span.dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #3b82f6;
+        }
+        .info-card-body {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.7;
+        }
+
+        /* Compare table */
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 20px;
+        }
+        .compare-table th {
+            padding: 10px 16px;
+            text-align: left;
+            background: #161616;
+            color: #888;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            border-bottom: 1px solid #222;
+        }
+        .compare-table td {
+            padding: 10px 16px;
+            border-bottom: 1px solid #1c1c1c;
+            color: #bbb;
+        }
+        .compare-table tr:last-child td { border-bottom: none; }
+        .compare-table tr:hover td { background: #141414; }
+        .ok { color: #22c55e; }
+        .no { color: #ef4444; }
+        .partial { color: #f59e0b; }
+
+        .emoji { font-size: 14px; }
+
+        .icon-svg {
+            width: 16px;
+            height: 16px;
+            opacity: 0.6;
+            display: inline-block;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <p class="page-title">归档功能 — UI 效果图</p>
+    <p class="page-sub">Claude Chat · 团队归档查看功能 · 2026-03-19</p>
+
+    <nav class="toc">
+        <a href="#state-collapsed">折叠状态</a>
+        <a href="#state-expanded">展开状态</a>
+        <a href="#state-viewing">查看归档</a>
+        <a href="#analysis">功能分析</a>
+    </nav>
+
+    <!-- 方案1：折叠 -->
+    <section id="state-collapsed" class="design-section">
+        <p class="section-label">状态 1</p>
+        <p class="section-title">归档区域 — 折叠状态（默认）</p>
+        <p class="section-desc">侧边栏底部显示归档折叠入口，显示归档团队数量，点击展开</p>
+
+        <div class="app-mock">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <span>Claude Teams</span>
+                    <div class="wifi-icon"></div>
+                </div>
+                <div class="new-team-btn">＋ 新建团队</div>
+                <div class="team-list">
+                    <div class="team-item active">
+                        <div class="avatar" style="background:#3b82f6">
+                            C
+                            <div class="online-dot"></div>
+                        </div>
+                        <div class="team-info">
+                            <div class="team-name-row">
+                                <span class="team-name">claude-teams-gui</span>
+                                <span class="team-time">今天 14:02</span>
+                            </div>
+                            <div class="team-preview">team-lead: 任务已分配...</div>
+                        </div>
+                    </div>
+                    <div class="team-item">
+                        <div class="avatar" style="background:#8b5cf6">
+                            T
+                            <div class="online-dot"></div>
+                        </div>
+                        <div class="team-info">
+                            <div class="team-name-row">
+                                <span class="team-name">test-team</span>
+                                <span class="team-time">昨天 18:30</span>
+                            </div>
+                            <div class="team-preview">tester: 测试已完成</div>
+                        </div>
+                    </div>
+                    <div class="team-item">
+                        <div class="avatar" style="background:#10b981">
+                            D
+                        </div>
+                        <div class="team-info">
+                            <div class="team-name-row">
+                                <span class="team-name">default</span>
+                                <span class="team-time">3月17日</span>
+                            </div>
+                            <div class="team-preview">4 条消息</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 归档折叠（默认关闭）-->
+                <div class="archive-section">
+                    <div class="archive-toggle" onclick="this.querySelector('.chevron').classList.toggle('open')">
+                        <div class="archive-toggle-left">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                                <rect x="1" y="3" width="22" height="5"></rect>
+                                <line x1="10" y1="12" x2="14" y2="12"></line>
+                            </svg>
+                            <span>归档</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <span class="archive-count-badge">3 个团队</span>
+                            <span class="chevron">▼</span>
+                        </div>
+                    </div>
+                    <div class="archive-list collapsed"></div>
+                </div>
+
+                <div class="settings-section">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    设置
+                </div>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="chat-area">
+                <div class="chat-header">
+                    <div class="chat-header-left">
+                        <div class="avatar" style="background:#3b82f6;width:32px;height:32px;font-size:13px">C</div>
+                        <div>
+                            <div class="chat-team-name">claude-teams-gui</div>
+                            <div class="chat-team-sub">3 名成员在线</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="messages-area">
+                    <div class="date-divider">今天</div>
+                    <div class="message-group">
+                        <div class="message-sender"><div class="sender-dot" style="background:#3b82f6"></div>team-lead</div>
+                        <div class="message-bubble agent">任务已分配给 backend-dev：实现归档团队列表 API 调用</div>
+                        <div class="message-time">14:02</div>
+                    </div>
+                    <div class="message-group" style="align-items:flex-end">
+                        <div class="message-sender" style="justify-content:flex-end"><div class="sender-dot" style="background:#1d4ed8"></div>user</div>
+                        <div class="message-bubble user">收到，开始实现</div>
+                        <div class="message-time" style="text-align:right">14:03</div>
+                    </div>
+                </div>
+                <div class="input-area">
+                    <div class="input-box">
+                        <div class="input-placeholder">发送消息给 claude-teams-gui...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 方案2：展开 -->
+    <section id="state-expanded" class="design-section">
+        <p class="section-label">状态 2</p>
+        <p class="section-title">归档区域 — 展开状态</p>
+        <p class="section-desc">点击归档按钮后展开，显示所有已归档团队列表，带归档日期</p>
+
+        <div class="app-mock">
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <span>Claude Teams</span>
+                    <div class="wifi-icon"></div>
+                </div>
+                <div class="new-team-btn">＋ 新建团队</div>
+                <div class="team-list">
+                    <div class="team-item active">
+                        <div class="avatar" style="background:#3b82f6">C<div class="online-dot"></div></div>
+                        <div class="team-info">
+                            <div class="team-name-row">
+                                <span class="team-name">claude-teams-gui</span>
+                                <span class="team-time">今天 14:02</span>
+                            </div>
+                            <div class="team-preview">team-lead: 任务已分配...</div>
+                        </div>
+                    </div>
+                    <div class="team-item">
+                        <div class="avatar" style="background:#8b5cf6">T</div>
+                        <div class="team-info">
+                            <div class="team-name-row">
+                                <span class="team-name">test-team</span>
+                                <span class="team-time">昨天</span>
+                            </div>
+                            <div class="team-preview">12 条消息</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="archive-section">
+                    <div class="archive-toggle" style="background:#1a1a1a">
+                        <div class="archive-toggle-left" style="color:#aaa">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                                <rect x="1" y="3" width="22" height="5"></rect>
+                                <line x1="10" y1="12" x2="14" y2="12"></line>
+                            </svg>
+                            <span>归档</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <span class="archive-count-badge">3 个团队</span>
+                            <span class="chevron open">▼</span>
+                        </div>
+                    </div>
+                    <div class="archive-list expanded">
+                        <div class="archive-team-item">
+                            <div class="archive-avatar" style="background:#ef4444">F</div>
+                            <div class="archive-team-info">
+                                <div class="archive-team-name">fix-permission-response</div>
+                                <div class="archive-team-date">归档于 3月19日</div>
+                            </div>
+                            <span class="archive-badge">归档</span>
+                        </div>
+                        <div class="archive-team-item">
+                            <div class="archive-avatar" style="background:#f59e0b">I</div>
+                            <div class="archive-team-info">
+                                <div class="archive-team-name">interactive-permission</div>
+                                <div class="archive-team-date">归档于 3月19日</div>
+                            </div>
+                            <span class="archive-badge">归档</span>
+                        </div>
+                        <div class="archive-team-item">
+                            <div class="archive-avatar" style="background:#06b6d4">R</div>
+                            <div class="archive-team-info">
+                                <div class="archive-team-name">realtime-online-status</div>
+                                <div class="archive-team-date">归档于 3月18日</div>
+                            </div>
+                            <span class="archive-badge">归档</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    设置
+                </div>
+            </div>
+
+            <div class="chat-area">
+                <div class="chat-header">
+                    <div class="chat-header-left">
+                        <div class="avatar" style="background:#3b82f6;width:32px;height:32px;font-size:13px">C</div>
+                        <div>
+                            <div class="chat-team-name">claude-teams-gui</div>
+                            <div class="chat-team-sub">当前活跃团队</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="messages-area" style="align-items:center;justify-content:center">
+                    <div style="text-align:center;color:#555">
+                        <div style="font-size:40px;margin-bottom:12px">📋</div>
+                        <div style="font-size:14px;color:#666;margin-bottom:6px">点击左侧归档团队查看历史消息</div>
+                        <div style="font-size:12px;color:#444">归档团队为只读模式</div>
+                    </div>
+                </div>
+                <div class="input-area">
+                    <div class="input-box">
+                        <div class="input-placeholder">发送消息给 claude-teams-gui...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 方案3：查看归档 -->
+    <section id="state-viewing" class="design-section">
+        <p class="section-label">状态 3</p>
+        <p class="section-title">查看归档团队 — 历史消息只读</p>
+        <p class="section-desc">选中归档团队后，显示历史消息，输入框禁用，顶部有只读横幅</p>
+
+        <div class="app-mock">
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <span>Claude Teams</span>
+                    <div class="wifi-icon"></div>
+                </div>
+                <div class="new-team-btn">＋ 新建团队</div>
+                <div class="team-list">
+                    <div class="team-item">
+                        <div class="avatar" style="background:#3b82f6">C<div class="online-dot"></div></div>
+                        <div class="team-info">
+                            <div class="team-name-row">
+                                <span class="team-name">claude-teams-gui</span>
+                                <span class="team-time">今天</span>
+                            </div>
+                            <div class="team-preview">38 条消息</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="archive-section">
+                    <div class="archive-toggle" style="background:#1a1a1a">
+                        <div class="archive-toggle-left" style="color:#aaa">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                                <rect x="1" y="3" width="22" height="5"></rect>
+                                <line x1="10" y1="12" x2="14" y2="12"></line>
+                            </svg>
+                            <span>归档</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <span class="archive-count-badge">3 个团队</span>
+                            <span class="chevron open">▼</span>
+                        </div>
+                    </div>
+                    <div class="archive-list expanded">
+                        <div class="archive-team-item active">
+                            <div class="archive-avatar" style="background:#ef4444">F</div>
+                            <div class="archive-team-info">
+                                <div class="archive-team-name" style="color:#bbb">fix-permission-response</div>
+                                <div class="archive-team-date">归档于 3月19日</div>
+                            </div>
+                            <span class="archive-badge">归档</span>
+                        </div>
+                        <div class="archive-team-item">
+                            <div class="archive-avatar" style="background:#f59e0b">I</div>
+                            <div class="archive-team-info">
+                                <div class="archive-team-name">interactive-permission</div>
+                                <div class="archive-team-date">归档于 3月19日</div>
+                            </div>
+                            <span class="archive-badge">归档</span>
+                        </div>
+                        <div class="archive-team-item">
+                            <div class="archive-avatar" style="background:#06b6d4">R</div>
+                            <div class="archive-team-info">
+                                <div class="archive-team-name">realtime-online-status</div>
+                                <div class="archive-team-date">归档于 3月18日</div>
+                            </div>
+                            <span class="archive-badge">归档</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    设置
+                </div>
+            </div>
+
+            <div class="chat-area">
+                <div class="chat-header">
+                    <div class="chat-header-left">
+                        <div class="avatar" style="background:#ef4444;width:32px;height:32px;font-size:13px;opacity:0.7">F</div>
+                        <div>
+                            <div class="chat-team-name" style="color:#ccc">fix-permission-response</div>
+                            <div class="chat-team-sub">归档团队 · 26 条历史消息</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 只读提示横幅 -->
+                <div class="archive-readonly-banner">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a0880a" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    这是一个归档团队，消息为只读模式。团队于 2026年3月19日 11:32 被归档。
+                </div>
+
+                <div class="messages-area">
+                    <div class="date-divider">2026年3月19日</div>
+                    <div class="message-group">
+                        <div class="message-sender"><div class="sender-dot" style="background:#ef4444"></div>team-lead</div>
+                        <div class="message-bubble agent">已完成 fix-permission-response 变更的所有任务，批准/拒绝功能已验证通过</div>
+                        <div class="message-time">11:28</div>
+                    </div>
+                    <div class="message-group">
+                        <div class="message-sender"><div class="sender-dot" style="background:#8b5cf6"></div>backend-dev</div>
+                        <div class="message-bubble agent">Permission response 路由已实现，写入成功</div>
+                        <div class="message-time">11:20</div>
+                    </div>
+                    <div class="message-group">
+                        <div class="message-sender"><div class="sender-dot" style="background:#10b981"></div>frontend-dev</div>
+                        <div class="message-bubble agent">批准/拒绝按钮组件已完成，样式已对齐设计稿</div>
+                        <div class="message-time">11:15</div>
+                    </div>
+                    <div class="message-bubble system">
+                        🗃️ 团队已归档 · 2026-03-19 11:32
+                    </div>
+                </div>
+
+                <!-- 只读输入框 -->
+                <div class="input-area">
+                    <div class="input-box" style="opacity:0.4;cursor:not-allowed">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        <div class="input-placeholder">归档团队不支持发送消息</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 功能分析 -->
+    <section id="analysis" class="design-section">
+        <p class="section-label">功能分析</p>
+        <p class="section-title">实现范围与数据流</p>
+
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="info-card-title"><span class="dot" style="background:#22c55e"></span>后端（已就绪）</div>
+                <div class="info-card-body">
+                    ✅ SQLite 保留归档消息<br>
+                    ✅ teams.status = 'archived'<br>
+                    ✅ GET /api/archive 端点<br>
+                    ✅ GET /api/teams/:name/messages 支持归档<br>
+                    ✅ FileWatcher 检测删除 → 自动归档
+                </div>
+            </div>
+            <div class="info-card">
+                <div class="info-card-title"><span class="dot" style="background:#f59e0b"></span>前端（待实现）</div>
+                <div class="info-card-body">
+                    ❌ 归档列表调用 API<br>
+                    ❌ 展开/折叠交互<br>
+                    ❌ 选中归档团队加载消息<br>
+                    ❌ 只读横幅组件<br>
+                    ❌ 输入框禁用状态
+                </div>
+            </div>
+            <div class="info-card">
+                <div class="info-card-title"><span class="dot" style="background:#3b82f6"></span>改动范围</div>
+                <div class="info-card-body">
+                    <strong>app.tsx</strong><br>
+                    - 加载 archivedTeams 状态<br>
+                    - 处理归档团队选中<br><br>
+                    <strong>Sidebar.tsx</strong><br>
+                    - 归档列表展开/折叠 UI<br><br>
+                    <strong>ChatArea.tsx</strong><br>
+                    - 只读模式横幅
+                </div>
+            </div>
+        </div>
+
+        <table class="compare-table" style="margin-top:24px">
+            <thead>
+                <tr>
+                    <th>功能点</th>
+                    <th>当前状态</th>
+                    <th>需要改动</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>消息数据持久化</td>
+                    <td><span class="ok">✓ 已完成</span> — SQLite 保留</td>
+                    <td>无需改动</td>
+                </tr>
+                <tr>
+                    <td>归档 API 端点</td>
+                    <td><span class="ok">✓ 已完成</span> — GET /api/archive</td>
+                    <td>无需改动</td>
+                </tr>
+                <tr>
+                    <td>消息查询 API</td>
+                    <td><span class="ok">✓ 已完成</span> — 不过滤 status</td>
+                    <td>无需改动</td>
+                </tr>
+                <tr>
+                    <td>前端归档列表</td>
+                    <td><span class="no">✗ 未实现</span> — 硬编码占位符</td>
+                    <td>Sidebar.tsx + app.tsx</td>
+                </tr>
+                <tr>
+                    <td>只读模式 UI</td>
+                    <td><span class="no">✗ 未实现</span></td>
+                    <td>ChatArea.tsx 新增横幅</td>
+                </tr>
+                <tr>
+                    <td>WebSocket 归档通知</td>
+                    <td><span class="ok">✓ 已完成</span> — team_archived 事件</td>
+                    <td>前端处理 team_archived 刷新列表</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+</div>
+</body>
+</html>

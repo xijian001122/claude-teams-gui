@@ -14,6 +14,9 @@ export interface WebSocketMessage {
   members?: MemberStatusInfo[];
   newPort?: number;
   newHost?: string;
+  oldInstance?: string | null;
+  newInstance?: string;
+  sourceProject?: string;
 }
 
 export function useWebSocket() {

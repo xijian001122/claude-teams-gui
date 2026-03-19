@@ -20,15 +20,31 @@ export async function messageRoutes(
       const messages = await db.getMessages(name, {
         before: query.before,
         limit,
-        to: query.to
+        to: query.to,
+        instance: query.instance
       });
 
       const hasMore = messages.length === limit;
 
+      // Extract instance metadata
+      const instances = new Set<string>();
+      const sourceProjects = new Set<string>();
+      messages.forEach(msg => {
+        if (msg.teamInstance) instances.add(msg.teamInstance);
+        if (msg.sourceProject) sourceProjects.add(msg.sourceProject);
+      });
+
       return {
         success: true,
-        data: { messages, hasMore }
-      } as ApiResponse<{ messages: Message[]; hasMore: boolean }>;
+        data: {
+          messages,
+          hasMore,
+          metadata: {
+            instances: Array.from(instances),
+            sourceProjects: Array.from(sourceProjects)
+          }
+        }
+      } as ApiResponse<{ messages: Message[]; hasMore: boolean; metadata: { instances: string[]; sourceProjects: string[] } }>;
     } catch (err) {
       reply.status(500);
       return {

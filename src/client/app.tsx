@@ -9,6 +9,7 @@ import { api } from './utils/api';
 
 export function App() {
   const [teams, setTeams] = useState<Team[]>([]);
+  const [archivedTeams, setArchivedTeams] = useState<Team[]>([]);
   const [currentTeam, setCurrentTeam] = useState<string | null>(null);
   const [messages, setMessages] = useState<Map<string, Message[]>>(new Map());
   const [memberStatuses, setMemberStatuses] = useState<Map<string, MemberStatusInfo[]>>(new Map());
@@ -26,6 +27,7 @@ export function App() {
   // Load teams on mount
   useEffect(() => {
     loadTeams();
+    loadArchivedTeams();
     loadCrossTeamTargets();
   }, []);
 
@@ -98,6 +100,28 @@ export function App() {
         localStorage.setItem('serverPort', String(lastMessage.newPort));
       }
     }
+
+    // Handle team instance changed event
+    if (lastMessage.type === 'team_instance_changed' && lastMessage.team) {
+      console.log('[App] Team instance changed:', lastMessage.team, 'new instance:', lastMessage.newInstance);
+      // Clear cached messages for this team so the new instance starts fresh
+      setMessages(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(lastMessage.team);
+        return newMap;
+      });
+      // Reload messages for the team with the new instance
+      loadMessages(lastMessage.team);
+    }
+
+    // Handle team archived event
+    if (lastMessage.type === 'team_archived' && lastMessage.team) {
+      console.log('[App] Team archived:', lastMessage.team);
+      // Reload archived teams list from API to ensure consistency
+      loadArchivedTeams();
+      // Also reload active teams (archived team will be removed from active list)
+      loadTeams();
+    }
   }, [lastMessage?.timestamp]); // Use timestamp to ensure re-trigger
 
   const loadTeams = async () => {
@@ -114,6 +138,18 @@ export function App() {
       console.error('Failed to load teams:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadArchivedTeams = async () => {
+    try {
+      const response = await api.get('/archive');
+      const data = response.data as { teams?: Team[] };
+      if (data?.teams) {
+        setArchivedTeams(data.teams);
+      }
+    } catch (err) {
+      console.error('Failed to load archived teams:', err);
     }
   };
 
@@ -245,6 +281,7 @@ export function App() {
       {/* Sidebar */}
       <Sidebar
         teams={teams}
+        archivedTeams={archivedTeams}
         currentTeam={currentTeam}
         onSelectTeam={(team) => {
           setCurrentTeam(team);
@@ -269,10 +306,15 @@ export function App() {
         </div>
       ) : (
         <ChatArea
-          team={teams.find(t => t.name === currentTeam) || null}
+          team={
+            teams.find(t => t.name === currentTeam) ||
+            archivedTeams.find(t => t.name === currentTeam) ||
+            null
+          }
           messages={messages.get(currentTeam || '') || []}
           memberStatuses={memberStatuses.get(currentTeam || '') || []}
           crossTeamTargets={crossTeamTargets.filter(t => t.name !== currentTeam)}
+          archivedTeams={archivedTeams}
           onSendMessage={handleSendMessage}
           onAvatarClick={handleAvatarClick}
           theme={theme}
@@ -283,3 +325,5 @@ export function App() {
     </div>
   );
 }
+
+// test comment for permission trigger

@@ -6,6 +6,7 @@ import { generateAvatarColor } from '@shared/utils/avatar';
 
 interface SidebarProps {
   teams: Team[];
+  archivedTeams: Team[];
   currentTeam: string | null;
   onSelectTeam: (team: string) => void;
   connected: boolean;
@@ -15,6 +16,7 @@ interface SidebarProps {
 
 export function Sidebar({
   teams,
+  archivedTeams,
   currentTeam,
   onSelectTeam,
   connected,
@@ -145,8 +147,47 @@ export function Sidebar({
             <Icon icon="archive" size={18} />
             <span>归档</span>
           </div>
-          <span className="text-xs">2 个团队</span>
+          <div className="flex items-center gap-1">
+            {archivedTeams.length > 0 && (
+              <span className="text-xs">{archivedTeams.length} 个团队</span>
+            )}
+            <Icon icon={showArchive ? 'chevron-up' : 'chevron-down'} size={14} />
+          </div>
         </button>
+
+        {showArchive && archivedTeams.length > 0 && (
+          <div className="pb-1">
+            {archivedTeams.map(team => (
+              <div
+                key={team.name}
+                className={`px-4 py-2 flex items-center gap-3 cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors ${currentTeam === team.name ? 'bg-[var(--bg-tertiary)]' : ''}`}
+                onClick={() => onSelectTeam(team.name)}
+              >
+                <div className="relative opacity-60">
+                  <Avatar
+                    letter={team.name.charAt(0).toUpperCase()}
+                    color={generateAvatarColor(team.name)}
+                    size="sm"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-[var(--text-secondary)] truncate">
+                    {team.displayName}
+                  </div>
+                  <div className="text-xs text-[var(--text-tertiary)]">
+                    {team.archivedAt ? `归档于 ${formatSmartTime(team.archivedAt)}` : '已归档'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {showArchive && archivedTeams.length === 0 && (
+          <div className="px-4 py-3 text-xs text-[var(--text-tertiary)] text-center">
+            暂无归档团队
+          </div>
+        )}
       </div>
 
       {/* Settings Section */}

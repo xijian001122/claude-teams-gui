@@ -39,11 +39,11 @@
 
 ## 6. Testing & Verification
 
-- [ ] 6.1 Test permission request card displays buttons for pending requests
-- [ ] 6.2 Test clicking approve sends correct API request
-- [ ] 6.3 Test clicking reject sends correct API request
-- [ ] 6.4 Test UI updates immediately after response
-- [ ] 6.5 Test buttons are disabled during submission
-- [ ] 6.6 Test status badge displays correctly for approved/rejected requests
-- [ ] 6.7 Test backend writes permission_response to correct agent inbox
-- [ ] 6.8 Test error handling when API fails
+- [x] 6.1 Test permission request card displays buttons for pending requests
+- [x] 6.2 Test clicking approve sends correct API request
+- [x] 6.3 Test clicking reject sends correct API request
+- [x] 6.4 Test UI updates immediately after response
+- [x] 6.5 Test buttons are disabled during submission
+- [x] 6.6 Test status badge displays correctly for approved/rejected requests
+- [x] 6.7 Test backend writes permission_response to correct agent inbox
+- [x] 6.8 Test error handling when API fails

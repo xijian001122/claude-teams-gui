@@ -64,61 +64,70 @@
       "Bash(bash -x scripts/start.sh 2>&1 | head -50)",
       "Bash(npx:*)",
       "Bash(git checkout:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git status:*)",
+      "WebFetch(domain:docs.claude.com)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(for dir:*)",
+      "Bash(bash /root/claude-chat/scripts/start.sh)",
+      "Bash(claude mcp:*)",
+      "Bash(npm root:*)",
+      "Bash(curl:*)"
     ]
   },
   "hooks": {
     "UserPromptSubmit": [
       {
-        "matcher": "",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/skill-forced-eval.js"
+            "command": "node /root/claude-chat/.claude/hooks/skill-forced-eval.js"
           }
         ]
       }
     ],
     "SessionStart": [
       {
-        "matcher": "",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/session-start.js"
+            "command": "node /root/claude-chat/.claude/hooks/session-start.js"
           }
         ]
       }
     ],
     "PreToolUse": [
       {
-        "matcher": "",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/pre-tool-use.js"
+            "command": "node /root/claude-chat/.claude/hooks/pre-tool-use.js"
           }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/post-tool-use.js"
+            "command": "node /root/claude-chat/.claude/hooks/post-tool-use.js"
           }
         ]
       }
     ],
     "Stop": [
       {
-        "matcher": "",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/stop-hook.js"
+            "command": "node /root/claude-chat/.claude/hooks/stop-hook.js"
           }
         ]
       }
