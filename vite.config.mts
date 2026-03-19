@@ -44,6 +44,7 @@ function backendPortPlugin() {
 }
 
 export default defineConfig({
+  root: 'src/client',
   plugins: [backendPortPlugin()],
   esbuild: {
     jsxFactory: 'h',
@@ -63,7 +64,12 @@ export default defineConfig({
   build: {
     outDir: '../../dist/client',
     emptyOutDir: true,
-    sourcemap: true
+    sourcemap: true,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'src/client/index.html')
+      }
+    }
   },
   server: {
     port: CLIENT_PORT,

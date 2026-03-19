@@ -13,7 +13,7 @@ export async function settingsRoutes(
   const { configService, onRestart } = options;
 
   // GET /api/settings - Get current settings
-  fastify.get('/', async (request, reply) => {
+  fastify.get('/', async (_request, _reply) => {
     const config = configService.getConfig();
 
     // Return full config (all editable fields)
@@ -78,7 +78,7 @@ export async function settingsRoutes(
   });
 
   // GET /api/settings/pending - Get pending restart state
-  fastify.get('/pending', async (request, reply) => {
+  fastify.get('/pending', async (_request, _reply) => {
     return {
       success: true,
       data: {
@@ -89,7 +89,7 @@ export async function settingsRoutes(
   });
 
   // GET /api/settings/restart-info - Get changed config items
-  fastify.get('/restart-info', async (request, reply) => {
+  fastify.get('/restart-info', async (_request, _reply) => {
     return {
       success: true,
       data: {
@@ -100,7 +100,7 @@ export async function settingsRoutes(
   });
 
   // POST /api/settings/restart - Restart the server
-  fastify.post('/restart', async (request, reply) => {
+  fastify.post('/restart', async (_request, reply) => {
     if (!onRestart) {
       reply.status(501);
       return {

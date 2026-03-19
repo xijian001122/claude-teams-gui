@@ -1,270 +1,399 @@
-# OpenSpec 集成
+# OpenSpec 集成规范
 
 ## 概述
 
-本文档说明 Agent Teams 如何与 OpenSpec 工作流集成，实现从提案到实现的完整协作流程。
+当使用 OpenSpec 提案驱动开发时，team-lead 需要从 `tasks.md` 中解析任务，
+正确分类并分配给对应成员，同时在分配前告知成员需要激活哪些技能。
 
-## OpenSpec 工作流概述
+## 第一步：读取 OpenSpec 任务
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    OpenSpec 工作流                              │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  /opsx:explore  →  /opsx:propose  →  /opsx:apply  →  /opsx:archive  │
-│       │                   │                │                │   │
-│       ▼                   ▼                ▼                ▼   │
-│  ┌────────┐         ┌────────┐        ┌────────┐       ┌────────┐│
-│  │ 思考   │         │ 创建   │        │ 实现   │       │ 归档   ││
-│  │ 探索   │────────▶│ 提案   │───────▶│ 任务   │──────▶│ 完成   ││
-│  └────────┘         └────────┘        └────────┘       └────────┘│
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+```bash
+# 读取提案的任务列表
+cat openspec/changes/{change-id}/tasks.md
 ```
 
-## 命令速查
+或使用 Read 工具：
+```javascript
+Read("openspec/changes/{change-id}/tasks.md")
+```
 
-| 命令 | 用途 | 使用场景 |
+### tasks.md 格式示例
+
+```markdown
+## 实现任务
+
+### 数据层
+- [ ] 创建 `HdDriver` Entity 继承 TenantEntity
+- [ ] 创建 `HdDriverBo` 请求对象（含验证注解）
+- [ ] 创建 `HdDriverVo` 响应对象（含 @AutoMapper）
+- [ ] 创建 `HdDriverMapper` 继承 BaseMapperPlus
+
+### 业务层
+- [ ] 实现 `IHdDriverService` 接口
+- [ ] 实现 `HdDriverServiceImpl`（queryPageList/getById/insert/update/delete）
+
+### 接口层
+- [ ] 实现 `HdDriverController`（含 @SaCheckPermission）
+
+### 测试
+- [ ] 编写 `HdDriverServiceTest` 单元测试
+- [ ] 验证所有接口正常工作
+```
+
+## 第二步：任务分类规则
+
+### 开发者任务（分配给 developer）
+
+| 关键词 | 示例 |
+|--------|------|
+| 创建、实现、添加 | 创建 Entity、实现 Service |
+| 修改、重构、优化 | 修改 Controller、重构逻辑 |
+| 修复 Bug | 修复参数验证问题 |
+| 数据库迁移 | 创建表结构 SQL |
+
+### 测试者任务（分配给 tester）
+
+| 关键词 | 示例 |
+|--------|------|
+| 编写测试、测试用例 | 编写单元测试 |
+| 验证、检查 | 验证接口正常工作 |
+| 测试覆盖率 | 确保覆盖率 ≥ 80% |
+
+## 第三步：技能映射规则
+
+根据任务内容，team-lead 需要告知成员激活哪些技能：
+
+### OpenSpec 专用技能（必需）
+
+**所有 OpenSpec 任务都需要激活 OpenSpec 技能**：
+
+| 技能 | 用途 | 何时使用 |
 |------|------|---------|
-| `/opsx:explore` | 探索模式 | 思考问题、调查代码、澄清需求 |
-| `/opsx:propose` | 创建提案 | 生成 proposal.md, design.md, tasks.md |
-| `/opsx:apply` | 实现任务 | 按 tasks.md 逐步实现功能 |
-| `/opsx:archive` | 归档变更 | 完成后归档到 archive 目录 |
+| `opsx:continue` | 读取 OpenSpec 提案详情 | 成员不在提案分支时必须调用 |
+| `opsx:apply` | 执行 OpenSpec 任务 | 开始实现任务时调用 |
+| `opsx:verify` | 验证实现是否符合提案 | 完成任务后验证 |
 
-## 团队协作流程
+**重要**：
+- 如果成员**不在提案分支**，必须先调用 `/opsx:continue {change-id}` 读取提案
+- 如果成员**已在提案分支**，可以直接开始工作，无需调用 `opsx:continue`
 
-### 流程1：探索阶段（Explore）
+### 开发者技能映射
 
-```javascript
-// 1. 进入探索模式
-// 用户: /opsx:explore 消息功能
+| 任务类型 | 需要激活的技能 |
+|----------|---------------|
+| CRUD 全栈开发 | `crud-development`, `database-ops`, `api-development`, `backend-annotations` |
+| 仅数据层（Entity/Mapper） | `crud-development`, `database-ops` |
+| 仅接口层（Controller） | `api-development`, `backend-annotations` |
+| 仅业务层（Service） | `crud-development`, `error-handler` |
+| Bug 修复 | 根据 Bug 类型判断（通常 `error-handler`） |
+| 数据库建表 | `database-ops` |
 
-// 2. 探索代码库
-// - 查看现有消息实现
-// - 分析 WebSocket 协议
-// - 识别集成点
+### 测试者技能映射
 
-// 3. 输出探索结果
-// - ASCII 架构图
-// - 选项对比表
-// - 风险和未知项
-```
+| 任务类型 | 需要激活的技能 |
+|----------|---------------|
+| 单元测试 | `testing-standards` |
+| 集成测试 | `testing-standards`, `api-development` |
 
-### 流程2：提案阶段（Propose）
+## 第四步：创建任务并分配
 
-```javascript
-// 1. 创建提案
-// 用户: /opsx:propose add-message-feature
-
-// 2. OpenSpec 自动生成
-// - openspec/changes/add-message-feature/proposal.md
-// - openspec/changes/add-message-feature/design.md
-// - openspec/changes/add-message-feature/tasks.md
-
-// 3. 读取任务列表
-Read("openspec/changes/add-message-feature/tasks.md")
-```
-
-### 流程3：团队分配（Agent Teams）
+### 从 OpenSpec 任务创建 TaskCreate
 
 ```javascript
-// 1. 创建团队
-TeamCreate({
-  team_name: "claude-teams-gui",
-  description: "OpenSpec 变更实施团队"
-})
-
-// 2. Spawn 成员
-Agent({
-  name: "frontend-dev",
-  description: "前端开发者",
-  prompt: `...`,
-  subagent_type: "general-purpose",
-  model: "sonnet",
-  team_name: "claude-teams-gui"
-})
-
-Agent({
-  name: "backend-dev",
-  description: "后端开发者",
-  prompt: `...`,
-  subagent_type: "general-purpose",
-  model: "sonnet",
-  team_name: "claude-teams-gui"
-})
-
-// 3. 根据 tasks.md 创建任务
+// 将 OpenSpec 的多个小任务合并为一个 TaskCreate
+// 开发任务：合并数据层 + 业务层 + 接口层
 TaskCreate({
-  subject: "实现消息 API",
-  description: `来自 OpenSpec 变更: add-message-feature
+  subject: "实现司机管理CRUD功能",
+  description: `## ⚠️ 指令：强制技能激活流程（必须执行）
 
-参考: openspec/changes/add-message-feature/design.md
+在开始实施任务前，你**必须**按以下步骤操作：
 
-## 任务需求
-...`,
-  activeForm: "实现消息 API"
+### 步骤 1 - 评估技能需求
+**可用技能列表**（共11个）：
+- **crud-development**: CRUD/业务模块开发、Entity/BO/VO/Service/Controller
+- **database-ops**: 数据库操作、SQL、建表、表结构查询
+- **api-development**: API设计、RESTful规范、Controller接口
+- **backend-annotations**: 后端注解使用（@SaCheckPermission、@Cacheable等）
+- **error-handler**: 异常处理、ServiceException使用
+- **security-guard**: 安全、加密、XSS、SQL注入防护
+- **utils-toolkit**: 工具类使用（StringUtils、MapstructUtils、EncryptUtils等）
+- **git-workflow**: Git提交、分支管理、合并冲突
+- **project-navigator**: 项目结构导航、文件查找
+- **skill-evolution**: 技能系统自我进化、新增技能、变更技能
+- **testing-standards**: 单元测试编写、JUnit5、Mockito、Mock对象
+
+### 步骤 2 - 激活技能
+- 如果任何技能评估为"是" → **必须**使用 Skill() 工具激活该技能
+- 如果所有技能评估为"否" → 说明"不需要激活任何技能"并继续
+
+
+### 步骤 3 - 读取技能文档（必须）
+**激活技能后，必须按以下顺序读取文档：**
+
+1. **读取 QUICK_REF.md**（如果存在）
+   - 位置: \`.claude/skills/\${skill-name}/QUICK_REF.md\`
+- 提供快速概览和常用模式
+
+2. **读取相关主题文档**
+- 位置: \`.claude/skills/\${skill-name}/docs/\${topic}.md\`
+- 包含详细规范和示例代码
+
+3. **不要只依赖 SKILL.md**
+- SKILL.md 只是导航中心
+- 详细规范在 QUICK_REF.md 和 docs/ 中
+
+### 步骤 4 - 读取子技能明细(必须)
+激活 crud-development 后：
+1. Read: .claude/skills/crud-development/QUICK_REF.md
+2. Read: .claude/skills/crud-development/docs/controller-layer.md
+3. Read: .claude/skills/crud-development/docs/service-layer.md
+4. 按照文档规范实现
+
+
+### 步骤 5 - 读取 OpenSpec 提案
+读取提案的核心文档：
+
+# 如果不在提案分支，先调用：
+/opsx:continue add-driver-mgmt
+
+# 然后执行任务：
+/opsx:apply add-driver-mgmt
+
+该命令会自动激活所需技能并读取提案文档。
+
+### 步骤 6 - 实施任务
+按照技能规范和提案要求实施以下任务：
+
+【数据层】
+- 创建 HdDriver Entity 继承 TenantEntity
+- 创建 HdDriverBo（含验证注解）
+- 创建 HdDriverVo（含 @AutoMapper）
+- 创建 HdDriverMapper 继承 BaseMapperPlus
+
+【业务层】
+- 实现 IHdDriverService 接口
+- 实现 HdDriverServiceImpl
+
+【接口层】
+- 实现 HdDriverController（含 @SaCheckPermission）
+
+验收标准：
+- 代码符合项目规范（禁止 JOIN，使用 @author zhangjiazheng）
+- 所有接口可正常调用`,
+  activeForm: "实现司机管理CRUD"
 })
+// 返回 taskId: "1"
 
-// 4. 分配任务
-TaskUpdate({
-  taskId: "1",
-  owner: "backend-dev",
-  status: "in_progress"
+// 测试任务：依赖开发任务
+TaskCreate({
+  subject: "测试司机管理CRUD功能",
+  description: `## ⚠️ 指令：强制技能激活流程（必须执行）
+
+在开始测试前，你**必须**按以下步骤操作：
+
+### 步骤 1 - 评估技能需求
+**可用技能列表**（共11个）：
+- **crud-development**: CRUD/业务模块开发、Entity/BO/VO/Service/Controller
+- **database-ops**: 数据库操作、SQL、建表、表结构查询
+- **api-development**: API设计、RESTful规范、Controller接口
+- **backend-annotations**: 后端注解使用（@SaCheckPermission、@Cacheable等）
+- **error-handler**: 异常处理、ServiceException使用
+- **security-guard**: 安全、加密、XSS、SQL注入防护
+- **utils-toolkit**: 工具类使用（StringUtils、MapstructUtils、EncryptUtils等）
+- **git-workflow**: Git提交、分支管理、合并冲突
+- **project-navigator**: 项目结构导航、文件查找
+- **skill-evolution**: 技能系统自我进化、新增技能、变更技能
+- **testing-standards**: 单元测试编写、JUnit5、Mockito、Mock对象
+
+### 步骤 2 - 激活技能
+- 如果任何技能评估为"是" → **必须**使用 Skill() 工具激活该技能
+- 如果所有技能评估为"否" → 说明"不需要激活任何技能"并继续
+
+
+### 步骤 3 - 读取技能文档（必须）
+**激活技能后，必须按以下顺序读取文档：**
+
+1. **读取 QUICK_REF.md**（如果存在）
+   - 位置: \`.claude/skills/\${skill-name}/QUICK_REF.md\`
+- 提供快速概览和常用模式
+
+2. **读取相关主题文档**
+- 位置: \`.claude/skills/\${skill-name}/docs/\${topic}.md\`
+- 包含详细规范和示例代码
+
+3. **不要只依赖 SKILL.md**
+- SKILL.md 只是导航中心
+- 详细规范在 QUICK_REF.md 和 docs/ 中
+
+### 步骤 5 - 读取子技能明细(必须)
+激活 testing-standards 后：
+1. Read: .claude/skills/testing-standards/QUICK_REF.md
+2. Read: .claude/skills/testing-standards/docs/assertions.md
+3. Read: .claude/skills/testing-standards/docs/test-data.md
+4. 按照文档规范实现
+
+### 步骤 6 - 读取 OpenSpec 提案
+读取提案的核心文档：
+Read("openspec/changes/add-driver-mgmt/proposal.md")
+Read("openspec/changes/add-driver-mgmt/tasks.md")
+
+### 步骤 7 - 实施测试任务
+按照技能规范和提案要求执行以下测试：
+
+- 编写 HdDriverServiceTest 单元测试
+- 验证所有接口正常工作
+- 确保测试覆盖率 ≥ 80%`,
+  activeForm: "测试司机管理CRUD"
 })
+// 返回 taskId: "2"
 
-// 5. 通知成员
-SendMessage({
-  to: "backend-dev",
-  message: `任务 #1 已分配给你：实现消息 API
-
-📋 OpenSpec 变更：add-message-feature
-
-🔧 实施步骤：
-
-【第一步：读取提案】
-/opsx:explore add-message-feature
-
-【第二步：实现任务】
-/opsx:apply add-message-feature
-
-完成后 TaskUpdate 标记完成并通知我。`,
-  summary: "分配任务 #1（OpenSpec: add-message-feature）"
-})
+// 设置依赖：测试依赖开发
+TaskUpdate({ taskId: "2", addBlockedBy: ["1"] })
 ```
 
-### 流程4：实施阶段（Apply）
+## 第五步：分配任务并通知技能
+
+**这是关键步骤**：分配任务时，必须在消息中明确告知成员：
+1. OpenSpec 提案的 change-id（分支名）
+2. 是否需要调用 `opsx:continue` 读取提案
+3. 需要激活哪些技能
+
+### 通知开发者
 
 ```javascript
-// 成员执行实现
-// 1. 读取 OpenSpec 上下文
-Read("openspec/changes/add-message-feature/proposal.md")
-Read("openspec/changes/add-message-feature/design.md")
-Read("openspec/changes/add-message-feature/tasks.md")
+TaskUpdate({ taskId: "1", owner: "developer", status: "in_progress" })
 
-// 2. 实现代码
-// ... 编写代码 ...
-
-// 3. 更新任务状态
-// 在 tasks.md 中标记完成：- [ ] → - [x]
-
-// 4. 通知 team-lead
 SendMessage({
-  to: "team-lead",
-  message: "任务 #1 完成：消息 API 已实现",
-  summary: "任务 #1 完成"
+  type: "message",
+  recipient: "developer",
+  content: `任务 #1 已分配给你：实现司机管理CRUD功能
+
+📋 OpenSpec 提案：add-driver-mgmt
+📍 提案路径：openspec/changes/add-driver-mgmt/
+
+🔧 开始前请按顺序执行：
+
+【第一步：读取提案（如果不在提案分支）】
+如果你当前不在 add-driver-mgmt 分支，请先调用：
+  /opsx:continue add-driver-mgmt
+这将读取提案的 proposal.md、tasks.md 和 design.md。
+如果你已在 add-driver-mgmt 分支，跳过此步骤。
+
+【第二步：实施任务】
+调用以下命令开始实施：
+  /opsx:apply add-driver-mgmt
+
+该命令会自动：
+- 激活所需技能（crud-development、database-ops、api-development、backend-annotations）
+- 读取提案和设计文档
+- 按任务列表逐步实施
+
+📌 注意事项：
+- 禁止使用 JOIN，使用应用层组装
+- @author 必须使用 zhangjiazheng
+- 参考模块：fhd-modules/fhd-parking-lot
+
+完成后请 TaskUpdate 标记完成并通知我。`,
+  summary: "分配开发任务 #1（OpenSpec: add-driver-mgmt）"
 })
 ```
 
-### 流程5：归档阶段（Archive）
+### 通知测试者
 
 ```javascript
-// 1. 确认所有任务完成
-TaskList()
-
-// 2. 归档 OpenSpec 变更
-// 用户: /opsx:archive add-message-feature
-
-// 3. 关闭团队
-SendMessage({
-  to: "frontend-dev",
-  message: {
-    type: "shutdown_request",
-    reason: "OpenSpec 变更已完成并归档"
-  }
-})
+// 等开发完成后
+TaskUpdate({ taskId: "2", owner: "tester", status: "in_progress" })
 
 SendMessage({
-  to: "backend-dev",
-  message: {
-    type: "shutdown_request",
-    reason: "OpenSpec 变更已完成并归档"
-  }
-})
+  type: "message",
+  recipient: "tester",
+  content: `任务 #2 已分配给你：测试司机管理CRUD功能
 
-// 4. 删除团队
-TeamDelete()
-```
+📋 OpenSpec 提案：add-driver-mgmt
+📍 提案路径：openspec/changes/add-driver-mgmt/
 
-## 任务分类规则
+🔧 开始前请按顺序执行：
 
-根据 `tasks.md` 内容分类任务：
+【第一步：读取提案（如果不在提案分支）】
+如果你当前不在 add-driver-mgmt 分支，请先调用：
+  /opsx:continue add-driver-mgmt
 
-| 任务类型 | 关键词 | 分配给 |
-|---------|--------|--------|
-| 前端任务 | UI、组件、样式、页面、Preact | frontend-dev |
-| 后端任务 | API、路由、数据库、SQLite、服务 | backend-dev |
-| 测试任务 | 测试、test、spec、验证 | frontend-dev 或 backend-dev |
+【第二步：实施测试任务】
+调用以下命令开始测试：
+  /opsx:apply add-driver-mgmt
 
-## 消息模板
+该命令会自动激活测试技能并按任务列表执行测试。
 
-### 分配任务通知（含 OpenSpec）
+📌 注意事项：
+- 使用 @ExtendWith(MockitoExtension.class)
+- Mock 所有外部依赖
+- 覆盖率目标 ≥ 80%
 
-```javascript
-SendMessage({
-  to: "frontend-dev",
-  message: `任务 #${taskId} 已分配给你：${taskTitle}
-
-📋 OpenSpec 变更：${changeName}
-
-🔧 实施步骤：
-
-【第一步：读取上下文】
-/opsx:explore ${changeName}
-
-【第二步：实现任务】
-/opsx:apply ${changeName}
-
-⚠️ 注意事项：
-- 遵循 design.md 中的设计决策
-- 完成后更新 tasks.md 中的任务状态
-
-完成后 TaskUpdate 标记完成并通知我。`,
-  summary: `分配任务 #${taskId}（OpenSpec: ${changeName}）`
+完成后请 TaskUpdate 标记完成并通知我。`,
+  summary: "分配测试任务 #2（OpenSpec: add-driver-mgmt）"
 })
 ```
 
-## OpenSpec 目录结构
+## 完整 OpenSpec 工作流程
 
 ```
-openspec/
-├── config.yaml                    # OpenSpec 配置
-├── changes/                       # 活跃变更
-│   └── {change-name}/
-│       ├── .openspec.yaml        # 变更配置
-│       ├── proposal.md           # 提案（what & why）
-│       ├── design.md             # 设计（how）
-│       ├── tasks.md              # 任务列表
-│       └── specs/                # 规格文档
-│           └── {capability}/
-│               └── spec.md
-├── specs/                         # 主规格
-│   └── {capability}/
-│       └── spec.md
-└── archive/                       # 已归档变更
-    └── YYYY-MM-DD-{change-name}/
+1. Read openspec/changes/{change-id}/tasks.md
+2. 分类任务（开发 vs 测试）
+3. TaskCreate（开发任务）→ taskId: "1"
+4. TaskCreate（测试任务）→ taskId: "2"
+5. TaskUpdate（设置依赖：2 blockedBy 1）
+6. TaskUpdate（分配 #1 给 developer）
+7. SendMessage（通知 developer）
+   - 包含 OpenSpec change-id
+   - 告知是否需要调用 opsx:continue
+   - 列出需要激活的技能
+8. 等待 developer 完成...
+9. TaskUpdate（分配 #2 给 tester）
+10. SendMessage（通知 tester）
+    - 包含 OpenSpec change-id
+    - 告知是否需要调用 opsx:continue
+    - 列出需要激活的技能
+11. 等待 tester 完成...
+12. 所有任务完成 → shutdown 团队
 ```
 
-## 最佳实践
+## 成员工作流程
 
-### 1. 先探索再提案
-- 使用 `/opsx:explore` 充分思考
-- 理解问题后再创建提案
+### 开发者收到任务后的流程
 
-### 2. 任务粒度适中
-- 每个 Task 对应一个明确的交付物
-- 任务之间设置合理的依赖关系
+```
+1. 检查当前分支
+   - 如果不在提案分支 → 调用 `/opsx:continue {change-id}`
+   - 如果已在提案分支 → 跳过此步
 
-### 3. 及时同步状态
-- 完成任务后立即更新 tasks.md
-- 通知 team-lead 进度
+2. 调用 `/opsx:apply {change-id}` 开始实施
+   - 自动激活所需技能
+   - 自动读取提案和设计文档
+   - 按任务列表逐步实施
 
-### 4. 遵循 OpenSpec 设计
-- 实现时参考 design.md
-- 如发现问题，更新设计文档
+3. 完成后
+   - TaskUpdate 标记完成
+   - SendMessage 通知 team-lead
+```
 
-## 相关命令
+### 测试者收到任务后的流程
 
-- `/opsx:explore` - 探索模式
-- `/opsx:propose` - 创建提案
-- `/opsx:apply` - 实现任务
-- `/opsx:archive` - 归档变更
+```
+1. 检查当前分支
+   - 如果不在提案分支 → 调用 `/opsx:continue {change-id}`
+   - 如果已在提案分支 → 跳过此步
+
+2. 调用 `/opsx:apply {change-id}` 开始测试
+   - 自动激活 testing-standards 技能
+   - 按任务列表执行测试任务
+
+3. 完成后
+   - TaskUpdate 标记完成
+   - SendMessage 通知 team-lead（包含测试结果）
+```
+
+## 相关文档
+
+- [任务管理](task-management.md)
+- [成员协作](member-collaboration.md)
+- [完整工作流程](workflow.md)

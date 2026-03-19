@@ -78,6 +78,16 @@ export interface ConfigChange {
     newValue: any;
     requiresRestart: boolean;
 }
+export interface MemberStatusInfo {
+    memberName: string;
+    status: 'busy' | 'idle' | 'occupied' | 'offline';
+    lastActivityAt: number;
+    statusChangedAt: number;
+}
+export interface MemberStatusMessage {
+    type: 'member_status';
+    members: MemberStatusInfo[];
+}
 export interface ConfigUpdateEvent {
     changes: ConfigChange[];
     pendingRestart: boolean;
@@ -100,6 +110,16 @@ export interface SendMessageBody {
 }
 export interface UpdateMessageBody {
     content: string;
+}
+export interface PermissionResponseBody {
+    /** ID of the permission request being responded to */
+    request_id: string;
+    /** Whether the permission was approved */
+    approve: boolean;
+    /** Name of the agent that made the request (to write response to their inbox) */
+    agent_id: string;
+    /** Timestamp of the response */
+    timestamp?: string;
 }
 export interface ServerToClientEvents {
     new_message: (data: {
@@ -143,6 +163,11 @@ export interface ServerToClientEvents {
     }) => void;
     /** Fired when configuration is updated */
     config_updated: (data: ConfigUpdateEvent) => void;
+    /** Fired when member status changes */
+    member_status: (data: {
+        team: string;
+        members: MemberStatusInfo[];
+    }) => void;
 }
 export interface ClientToServerEvents {
     join_team: (team: string) => void;

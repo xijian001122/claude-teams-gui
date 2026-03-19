@@ -123,7 +123,7 @@ export async function messageRoutes(
 
   // PUT /api/teams/:name/messages/:id - Update message
   fastify.put('/:name/messages/:id', async (request, reply) => {
-    const { name, id } = request.params as { name: string; id: string };
+    const { id } = request.params as { id: string };
     const body = request.body as { content: string };
 
     if (!body.content?.trim()) {

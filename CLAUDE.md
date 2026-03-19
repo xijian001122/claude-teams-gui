@@ -99,6 +99,134 @@ bash scripts/start.sh
 
 **Runtime**: Bun (dev), Node.js (prod)
 
+## Agent Teams 职责规范
+
+### Team-lead (@main) 职责边界
+
+| 可以做 | 不能做 |
+|--------|--------|
+| ✅ 创建团队和成员 | ❌ 直接修改代码文件 |
+| ✅ 创建和分配任务 | ❌ 自己实施任务（应该分配给成员） |
+| ✅ 读取 OpenSpec 文档 | ❌ 绕过成员直接修复 Bug |
+| ✅ 审查成员提交的代码 | ❌ 绕过 OpenSpec 流程直接开发 |
+| ✅ 更新任务描述 | ❌ 修改团队成员的代码 |
+
+### 重要规则
+
+**没我允许不可自行关闭团队**
+
+- Team-lead 在任务未完成前不得自行关闭团队
+- 团队成员完成任务后必须等待我的确认
+- 我需要审查所有完成的工作后才能决定关闭团队
+- 如果需要关闭团队，必须先询问我获得许可
+
+**核心原则**: Team-lead 只负责**分配任务**和**审查代码**，实际**代码变更由成员执行**。
+
+### 团队成员角色配置
+
+| 角色 | 名称 | 模型 | 核心职责 |
+|------|------|------|----------|
+| **前端开发者** | frontend-dev | kimi-k2.5 | Preact 组件开发、TailwindCSS 样式、WebSocket 消息处理、状态管理 |
+| **后端开发者** | backend-dev | glm-5 | Fastify REST API、SQLite 数据库、WebSocket 服务、文件同步 |
+| **测试者** | tester | glm-5 | 编写测试用例、执行测试、验证功能、报告问题 |
+| **Bug 修复者** | bug-fixer | glm-5 | 问题调试、缺陷修复、回归测试 |
+
+### 任务分配规则
+
+| 任务类型 | 关键词 | 分配给 |
+|---------|--------|--------|
+| 前端任务 | UI、组件、样式、页面、Preact | frontend-dev |
+| 后端任务 | API、路由、数据库、SQLite、服务 | backend-dev |
+| 测试任务 | 测试、test、spec、验证、QA | tester |
+| 修复任务 | bug、修复、fix、问题、错误 | bug-fixer |
+
+### 项目工作流程
+
+### 标准开发流程
+
+```
+1. 提案阶段 (Propose)
+   ├── 使用 /opsx:propose <name> 创建提案
+   ├── 生成 proposal.md, design.md, tasks.md
+   └── 确定技术方案和任务分配
+
+2. 开发阶段 (Develop)
+   ├── 基于 main 创建功能分支
+   ├── 按照 tasks.md 执行任务
+   └── 定期提交代码到分支
+
+3. 归档阶段 (Archive)
+   ├── 使用 /opsx:archive <name> 归档变更
+   ├── 归档文档保存到 docs/archive/<name>/
+   └── 触发 Git 提交（必须）
+
+4. 合并阶段 (Merge)
+   ├── 创建 PR 到 main 分支
+   ├── 代码审查
+   └── 合并并删除功能分支
+```
+
+### OpenSpec 集成要求
+
+**所有 OpenSpec 任务必须遵循以下流程**:
+
+```
+1. Team-lead 执行 openspec list 确认变更名称
+2. Team-lead 创建任务，分配给成员，告知 change-name
+3. 成员执行 /opsx:apply <change-name> 实现任务
+   - 自动激活所需技能
+   - 自动读取 proposal.md, design.md, tasks.md
+4. 成员完成任务后 TaskUpdate 标记 completed
+5. 成员 SendMessage 通知 team-lead
+6. Team-lead 审查代码，如有问题重新分配
+7. Team-lead 执行 /opsx:archive <change-name> 归档变更
+8. **必须**: 提交归档到 Git（见下方归档提交规范）
+```
+
+**任务分配消息必须包含**:
+- OpenSpec 变更名称
+- `/opsx:continue <change-name>`（如不在提案分支）
+- `/opsx:apply <change-name>`（实施命令）
+
+### 归档提交规范（强制）
+
+**每次执行归档后，必须立即提交到 Git**:
+
+```bash
+# 1. 检查本次归档产生的实际变更
+git status
+
+# 2. 添加实际变更的文件（根据 git status 结果）
+git add <实际变更的文件1>
+git add <实际变更的文件2>
+# 或者使用 git add -p 逐个确认
+
+# 3. 创建归档提交（必须使用 archive: 类型）
+git commit -m "archive: <change-name> - 完成归档
+
+- 添加设计文档归档
+- 添加任务执行记录
+- 更新变更日志
+
+归档路径: docs/archive/<change-name>/"
+
+# 4. 推送到远程仓库
+git push origin $(git branch --show-current)
+```
+
+**归档提交检查清单**:
+- [ ] 执行 `git status` 查看本次归档产生的实际变更
+- [ ] 添加实际变更的文件（不要固定写死路径）
+- [ ] 提交信息使用 `archive:` 类型前缀
+- [ ] 提交信息包含归档的变更名称
+- [ ] 变更已推送到远程仓库
+
+**为什么必须提交归档**:
+- 归档的变更被永久保存到版本控制
+- 团队成员可以同步最新的归档状态
+- 可以追溯功能的历史演进
+- 支持回滚到任意归档版本
+
 ## Directory Structure
 
 - `src/server/` - Backend (Fastify, SQLite, WebSocket)
@@ -152,3 +280,11 @@ Core types defined in `src/shared/types.ts`:
 - Server port: 4558, Client dev server: 4559
 - Production build serves static files from `dist/client/` via Fastify
 - WebSocket uses `@fastify/websocket` (native WebSocket, not Socket.io)
+
+## 相关技能
+
+- **git-workflow**: Git 工作流规范（分支策略、提交规范、归档提交）
+- **project-arch**: 项目架构规范
+- **frontend-dev**: 前端开发规范
+- **backend-dev**: 后端开发规范
+- **websocket-protocol**: WebSocket 通信协议

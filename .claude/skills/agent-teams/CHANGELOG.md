@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.5.0] - 2026-03-19
+### Changed
+- **更新 OpenSpec 集成规范**
+  - 更新任务分配消息模板，包含完整的两步命令（/opsx:continue + /opsx:apply）
+  - 更新 `commands/teams/apply.md`，添加强制 OpenSpec 规范要求
+  - 更新 `docs/openspec-integration.md`，添加任务分类和技能映射规则
+  - 更新 Agent Prompt 模板，包含 OpenSpec 快捷命令
+  - 明确 Team-lead 只分配任务，不直接修改代码
+
+### Added
+- 新增 OpenSpec 技能映射规则
+  - 开发者任务技能映射（CRUD、数据层、接口层等）
+  - 测试者任务技能映射（单元测试、集成测试）
+  - 任务分类规则（开发 vs 测试）
+
 ## [1.4.0] - 2026-03-18
 ### Changed
 - **四角色团队成为默认模式**

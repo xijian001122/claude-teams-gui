@@ -3,6 +3,7 @@ import { marked } from 'marked';
 import type { Message, TeamMember } from '@shared/types';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
+import { JsonMessageCard } from './JsonMessageCard';
 
 // Configure marked for safe rendering
 marked.setOptions({
@@ -18,6 +19,7 @@ interface MessageBubbleProps {
   member?: TeamMember;
   onAvatarClick?: (memberName: string) => void;
   currentTeam?: string;
+  onPermissionResponse?: (requestId: string, approve: boolean) => Promise<void>;
 }
 
 function formatMessageContent(content: string): { type: 'text' | 'json'; display: string } {
@@ -51,7 +53,8 @@ export function MessageBubble({
   showAvatar,
   member,
   onAvatarClick,
-  currentTeam
+  currentTeam,
+  onPermissionResponse
 }: MessageBubbleProps) {
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -85,6 +88,9 @@ export function MessageBubble({
     return name.slice(0, maxLength - 3) + '...';
   };
 
+  // Check if this is a JSON message that should use JsonMessageCard
+  const isJsonMessage = message.content.trim().startsWith('{') && message.content.trim().endsWith('}');
+
   // Parse markdown for text content
   const renderContent = () => {
     if (isSystemMessage) {
@@ -112,7 +118,7 @@ export function MessageBubble({
 
       {/* Bubble */}
       <div
-        className={`max-w-[70%] rounded-lg px-4 py-2 ${
+        className={`max-w-[50%] rounded-lg px-4 py-2 overflow-hidden ${
           isSelf
             ? 'bg-blue-500 text-white rounded-tr-none'
             : 'bg-[var(--bg-secondary)] text-[var(--text-primary)] rounded-tl-none'
@@ -171,10 +177,17 @@ export function MessageBubble({
         )}
 
         {/* Content */}
-        <div
-          className={`text-sm break-words markdown-content ${isSystemMessage ? 'italic text-gray-500' : ''}`}
-          dangerouslySetInnerHTML={{ __html: renderContent() }}
-        />
+        {isJsonMessage ? (
+          <JsonMessageCard
+            message={message}
+            onPermissionResponse={onPermissionResponse}
+          />
+        ) : (
+          <div
+            className={`text-sm break-words markdown-content ${isSystemMessage ? 'italic text-gray-500' : ''}`}
+            dangerouslySetInnerHTML={{ __html: renderContent() }}
+          />
+        )}
 
         {/* Timestamp */}
         <div

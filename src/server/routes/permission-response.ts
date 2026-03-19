@@ -1,0 +1,122 @@
+import { FastifyInstance } from 'fastify';
+import { join } from 'path';
+import { readFileSync, existsSync, writeFileSync } from 'fs';
+import type { DatabaseService } from '../db';
+import type { ApiResponse, PermissionResponseBody } from '@shared/types';
+
+export async function permissionResponseRoutes(
+  fastify: FastifyInstance,
+  options: { db: DatabaseService; claudeTeamsPath: string }
+) {
+  const { db, claudeTeamsPath } = options;
+
+  // POST /api/teams/:name/permission-response - Send permission response
+  fastify.post('/:name/permission-response', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    const body = request.body as PermissionResponseBody;
+
+    // Validate required fields
+    if (!body.request_id || typeof body.request_id !== 'string') {
+      reply.status(400);
+      return {
+        success: false,
+        error: 'request_id is required and must be a string'
+      } as ApiResponse<never>;
+    }
+
+    if (typeof body.approve !== 'boolean') {
+      reply.status(400);
+      return {
+        success: false,
+        error: 'approve is required and must be a boolean'
+      } as ApiResponse<never>;
+    }
+
+    if (!body.agent_id || typeof body.agent_id !== 'string') {
+      reply.status(400);
+      return {
+        success: false,
+        error: 'agent_id is required and must be a string'
+      } as ApiResponse<never>;
+    }
+
+    try {
+      // Check if team exists
+      const team = await db.getTeam(name);
+      if (!team) {
+        reply.status(404);
+        return {
+          success: false,
+          error: 'Team not found'
+        } as ApiResponse<never>;
+      }
+
+      // Construct permission_response message
+      const timestamp = body.timestamp || new Date().toISOString();
+      const permissionResponse = {
+        type: 'permission_response',
+        request_id: body.request_id,
+        subtype: 'success',
+        response: {
+          approved: body.approve,
+          timestamp
+        }
+      };
+
+      // Write to agent's inbox file
+      const inboxPath = join(claudeTeamsPath, name, 'inboxes', `${body.agent_id}.json`);
+
+      if (!existsSync(inboxPath)) {
+        reply.status(404);
+        return {
+          success: false,
+          error: `Agent inbox not found: ${body.agent_id}`
+        } as ApiResponse<never>;
+      }
+
+      // Read existing messages
+      const messages = JSON.parse(readFileSync(inboxPath, 'utf8'));
+
+      if (!Array.isArray(messages)) {
+        reply.status(500);
+        return {
+          success: false,
+          error: 'Invalid inbox format'
+        } as ApiResponse<never>;
+      }
+
+      // Append permission_response message
+      messages.push({
+        from: 'user',
+        text: JSON.stringify(permissionResponse),
+        summary: `Permission ${body.approve ? 'approved' : 'rejected'}: ${body.request_id}`,
+        timestamp,
+        read: false
+      });
+
+      // Write back to file
+      writeFileSync(inboxPath, JSON.stringify(messages, null, 2));
+
+      console.log(`[PermissionResponse] Written to ${body.agent_id}'s inbox: ${body.approve ? 'approved' : 'rejected'} ${body.request_id}`);
+
+      reply.status(201);
+      return {
+        success: true,
+        data: {
+          request_id: body.request_id,
+          approve: body.approve,
+          timestamp
+        }
+      } as ApiResponse<{ request_id: string; approve: boolean; timestamp: string }>;
+    } catch (err) {
+      console.error('[PermissionResponse] Error:', err);
+      reply.status(500);
+      return {
+        success: false,
+        error: 'Failed to process permission response'
+      } as ApiResponse<never>;
+    }
+  });
+}
+
+export default permissionResponseRoutes;

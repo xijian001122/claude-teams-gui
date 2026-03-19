@@ -4,6 +4,8 @@
 export declare const DEFAULT_CONFIG: {
     port: number;
     host: string;
+    clientPort: number;
+    clientHost: string;
     dataDir: string;
     teamsPath: string;
     retentionDays: number;

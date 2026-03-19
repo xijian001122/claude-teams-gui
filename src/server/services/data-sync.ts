@@ -213,14 +213,6 @@ export class DataSyncService {
   }
 
   /**
-   * Check if message already exists
-   */
-  private checkExistingMessage(team: string, inbox: string, index: number): boolean {
-    // This is a simplified check - in production, use a proper query
-    return false;
-  }
-
-  /**
    * Convert Claude message format to our format
    */
   private convertToMessage(team: string, inbox: string, index: number, msg: any): Message {
@@ -304,6 +296,7 @@ export class DataSyncService {
     const message: Message = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       localId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      team: teamName,
       from: 'user',
       fromType: 'user',
       to,
@@ -363,6 +356,7 @@ export class DataSyncService {
     const sourceMessage: Message = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       localId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      team: fromTeam,
       from: 'user',
       fromType: 'user',
       to: `team:${toTeam}`,

@@ -4,13 +4,14 @@ import { ChatArea } from './components/ChatArea';
 import { SettingsPage } from './components/SettingsPage';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useTheme } from './hooks/useTheme';
-import type { Team, Message, ConfigChange } from '@shared/types';
+import type { Team, Message, ConfigChange, MemberStatusInfo } from '@shared/types';
 import { api } from './utils/api';
 
 export function App() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [currentTeam, setCurrentTeam] = useState<string | null>(null);
   const [messages, setMessages] = useState<Map<string, Message[]>>(new Map());
+  const [memberStatuses, setMemberStatuses] = useState<Map<string, MemberStatusInfo[]>>(new Map());
   const [crossTeamTargets, setCrossTeamTargets] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -77,6 +78,16 @@ export function App() {
           console.log(`[App] Config changes require restart: ${restartKeys}`);
         }
       }
+    }
+
+    // Handle member status updates
+    if (lastMessage.type === 'member_status' && lastMessage.team && lastMessage.members) {
+      console.log('[App] Member status update for team:', lastMessage.team, lastMessage.members);
+      setMemberStatuses(prev => {
+        const newMap = new Map(prev);
+        newMap.set(lastMessage.team, lastMessage.members);
+        return newMap;
+      });
     }
 
     // Handle server restarting event
@@ -178,6 +189,48 @@ export function App() {
     console.log('Avatar clicked:', memberName);
   };
 
+  const handlePermissionResponse = async (requestId: string, approve: boolean) => {
+    if (!currentTeam) return;
+
+    try {
+      // Call API to send permission response
+      await api.post(`/teams/${currentTeam}/permission-response`, {
+        request_id: requestId,
+        approve
+      });
+
+      // Update local messages state to reflect the response
+      setMessages(prev => {
+        const newMap = new Map(prev);
+        const teamMessages = newMap.get(currentTeam) || [];
+        const updatedMessages = teamMessages.map(msg => {
+          try {
+            const data = JSON.parse(msg.content);
+            if (data.type === 'permission_request' && data.request_id === requestId) {
+              // Update the permission request with the response status
+              return {
+                ...msg,
+                content: JSON.stringify({
+                  ...data,
+                  status: approve ? 'approved' : 'rejected',
+                  response: approve
+                })
+              };
+            }
+          } catch {
+            // Not a JSON message, skip
+          }
+          return msg;
+        });
+        newMap.set(currentTeam, updatedMessages);
+        return newMap;
+      });
+    } catch (err) {
+      console.error('Failed to send permission response:', err);
+      throw err;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -217,11 +270,13 @@ export function App() {
         <ChatArea
           team={teams.find(t => t.name === currentTeam) || null}
           messages={messages.get(currentTeam || '') || []}
+          memberStatuses={memberStatuses.get(currentTeam || '') || []}
           crossTeamTargets={crossTeamTargets.filter(t => t.name !== currentTeam)}
           onSendMessage={handleSendMessage}
           onAvatarClick={handleAvatarClick}
           theme={theme}
           onToggleTheme={toggleTheme}
+          onPermissionResponse={handlePermissionResponse}
         />
       )}
     </div>

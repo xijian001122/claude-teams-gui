@@ -60,7 +60,10 @@
       "Bash(sleep:*)",
       "Bash(cd:*)",
       "Bash(ps aux:*)",
-      "Bash(wget:*)"
+      "Bash(wget:*)",
+      "Bash(bash -x scripts/start.sh 2>&1 | head -50)",
+      "Bash(npx:*)",
+      "Bash(git checkout:*)"
     ]
   },
   "hooks": {

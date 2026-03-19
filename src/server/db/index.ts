@@ -5,10 +5,8 @@ import type { Message, Team } from '@shared/types';
 
 export class DatabaseService {
   private db: sqlite3.Database;
-  private dataDir: string;
 
   constructor(dataDir: string) {
-    this.dataDir = dataDir;
 
     // Ensure data directory exists
     if (!existsSync(dataDir)) {

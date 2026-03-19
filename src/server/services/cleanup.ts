@@ -123,7 +123,6 @@ export class CleanupService {
     let archived = 0;
 
     for (const team of teams) {
-      const archivedAt = new Date(team.archived_at);
       const expireAt = subDays(new Date(), -this.config.retentionDays); // Add days
 
       if (new Date() > expireAt) {

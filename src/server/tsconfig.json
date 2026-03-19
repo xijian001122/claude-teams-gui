@@ -4,8 +4,8 @@
     "jsx": "preserve",
     "lib": ["ES2022"],
     "outDir": "../../dist/server",
-    "rootDir": "."
+    "rootDir": ".."
   },
   "include": ["./**/*", "../shared/**/*"],
-  "exclude": ["**/*.test.ts"]
+  "exclude": ["**/*.test.ts", "**/*.spec.ts", "../shared/**/*.test.ts", "../shared/**/*.spec.ts"]
 }

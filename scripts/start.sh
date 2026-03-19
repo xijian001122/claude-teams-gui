@@ -1,6 +1,12 @@
 #!/bin/bash
 # Claude Chat 启动脚本 - 从配置文件读取端口
 
+# 清理占用端口的进程
+echo "清理占用端口的进程..."
+fuser -k 4558/tcp 2>/dev/null || true
+fuser -k 4559/tcp 2>/dev/null || true
+sleep 1
+
 CONFIG_PATH="${HOME}/.claude-chat/config.json"
 
 # 读取配置（如果存在）

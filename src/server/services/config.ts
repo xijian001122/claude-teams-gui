@@ -19,9 +19,6 @@ function expandHomeDir(path: string): string {
   return path;
 }
 
-type RestartRequiredKey = typeof RESTART_REQUIRED_KEYS[number];
-type RuntimeConfigKey = typeof RUNTIME_CONFIG_KEYS[number];
-
 export class ConfigService {
   private config: AppConfig;
   private configPath: string;

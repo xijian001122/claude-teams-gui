@@ -6,7 +6,7 @@ export async function archiveRoutes(fastify: FastifyInstance, options: { db: Dat
   const { db } = options;
 
   // GET /api/archive - Get archived teams
-  fastify.get('/', async (request, reply) => {
+  fastify.get('/', async (_request, reply) => {
     try {
       const teams = await db.getTeams('archived');
 

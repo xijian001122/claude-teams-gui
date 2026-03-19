@@ -76,12 +76,32 @@ program
       `);
 
       // Create and start server
-      const { fastify } = await createServer({ config, dataDir });
+      const { fastify, memberStatusService } = await createServer({ config, dataDir });
 
       await fastify.listen({
         port: config.port,
         host: config.host
       });
+
+      // Periodically broadcast member status for all tracked teams
+      // Use tick() to recalculate occupied/offline states
+      setInterval(() => {
+        const teams = memberStatusService?.getTrackedTeams() || [];
+        for (const teamName of teams) {
+          const statuses = memberStatusService.tick(teamName); // tick() updates state machine
+          if (fastify.websocketServer && statuses.length > 0) {
+            fastify.websocketServer.clients.forEach((client: any) => {
+              if (client.readyState === 1) {
+                client.send(JSON.stringify({
+                  type: 'member_status',
+                  team: teamName,
+                  members: statuses
+                }));
+              }
+            });
+          }
+        }
+      }, 5000); // Broadcast every 5 seconds
 
       const url = `http://${config.host}:${config.port}`;
       console.log(`✓ Server running at ${url}`);

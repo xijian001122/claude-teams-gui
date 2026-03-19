@@ -3,3 +3,7 @@ export * from './MessageBubble';
 export * from './InputBox';
 export * from './Sidebar';
 export * from './ChatArea';
+export * from './OnlineMembersTrigger';
+export * from './OnlineMembersPanel';
+export * from './MemberStatusIndicator';
+export * from './JsonMessageCard';

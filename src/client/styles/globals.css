@@ -14,6 +14,30 @@
   --bubble-self-text: #ffffff;
   --bubble-other: #f3f4f6;
   --bubble-other-text: #111827;
+
+  /* Member status colors */
+  --status-busy: #ef4444;
+  --status-idle: #22c55e;
+  --status-offline: #d1d5db;
+
+  /* JSON Message Card colors */
+  --json-type-idle: #8b5cf6;
+  --json-type-permission: #f59e0b;
+  --json-type-task: #3b82f6;
+  --json-type-shutdown: #6b7280;
+  --json-type-response: #10b981;
+  --json-type-error: #ef4444;
+  --json-type-plan: #3b82f6;
+
+  /* Status badge colors */
+  --json-status-pending-bg: #fef3c7;
+  --json-status-pending-text: #92400e;
+  --json-status-success-bg: #dcfce7;
+  --json-status-success-text: #166534;
+  --json-status-active-bg: #e0e7ff;
+  --json-status-active-text: #4338ca;
+  --json-status-error-bg: #fee2e2;
+  --json-status-error-text: #991b1b;
 }
 
 [data-theme="dark"] {
@@ -27,6 +51,30 @@
   --bubble-self-text: #ffffff;
   --bubble-other: #374151;
   --bubble-other-text: #f9fafb;
+
+  /* Member status colors (same for dark theme) */
+  --status-busy: #ef4444;
+  --status-idle: #22c55e;
+  --status-offline: #d1d5db;
+
+  /* JSON Message Card colors (same for dark theme) */
+  --json-type-idle: #8b5cf6;
+  --json-type-permission: #f59e0b;
+  --json-type-task: #3b82f6;
+  --json-type-shutdown: #6b7280;
+  --json-type-response: #10b981;
+  --json-type-error: #ef4444;
+  --json-type-plan: #3b82f6;
+
+  /* Status badge colors (adjusted for dark theme) */
+  --json-status-pending-bg: #78350f;
+  --json-status-pending-text: #fef3c7;
+  --json-status-success-bg: #14532d;
+  --json-status-success-text: #dcfce7;
+  --json-status-active-bg: #312e81;
+  --json-status-active-text: #e0e7ff;
+  --json-status-error-bg: #7f1d1d;
+  --json-status-error-text: #fee2e2;
 }
 
 * {
@@ -333,4 +381,313 @@ html, body, #root {
 .markdown-content th {
   background: var(--bg-secondary);
   font-weight: 600;
+}
+
+/* ========== JSON Message Card Styles ========== */
+.json-message-card {
+  background: var(--bg-primary);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid;
+  max-width: 100%;
+  word-wrap: break-word;
+}
+
+.json-message-card.idle { border-left-color: var(--json-type-idle); }
+.json-message-card.permission { border-left-color: var(--json-type-permission); }
+.json-message-card.task { border-left-color: var(--json-type-task); }
+.json-message-card.shutdown { border-left-color: var(--json-type-shutdown); }
+.json-message-card.response { border-left-color: var(--json-type-response); }
+.json-message-card.error { border-left-color: var(--json-type-error); }
+.json-message-card.plan { border-left-color: var(--json-type-plan); }
+
+.json-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.json-type {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.json-type-icon {
+  font-size: 18px;
+}
+
+.json-status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-weight: 500;
+}
+
+.json-status.pending {
+  background: var(--json-status-pending-bg);
+  color: var(--json-status-pending-text);
+}
+
+.json-status.success {
+  background: var(--json-status-success-bg);
+  color: var(--json-status-success-text);
+}
+
+.json-status.active {
+  background: var(--json-status-active-bg);
+  color: var(--json-status-active-text);
+}
+
+.json-status.error {
+  background: var(--json-status-error-bg);
+  color: var(--json-status-error-text);
+}
+
+.json-body {
+  padding: 16px;
+  max-width: 100%;
+  overflow: hidden;
+  word-wrap: break-word;
+}
+
+.json-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.json-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.json-field {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.json-field-label {
+  color: var(--text-secondary);
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+.json-field-value {
+  color: var(--text-primary);
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.json-field-value.mono {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.json-description {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.json-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.json-tag-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.json-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+/* JSON Toggle Button */
+.json-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: fit-content;
+}
+
+.json-toggle:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.json-toggle-icon {
+  transition: transform 0.2s ease;
+}
+
+.json-toggle.expanded .json-toggle-icon {
+  transform: rotate(180deg);
+}
+
+/* JSON Code Wrapper */
+.json-code-wrapper {
+  max-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  transition: max-height 0.3s ease;
+}
+
+.json-code-wrapper.expanded {
+  max-height: 500px;
+}
+
+.json-code {
+  margin-top: 12px;
+  background: #1f2937;
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+
+.json-code pre {
+  margin: 0;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e5e7eb;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+/* JSON Syntax Highlighting */
+.json-key { color: #93c5fd; word-break: break-all; }
+.json-string { color: #86efac; word-break: break-all; }
+.json-number { color: #fca5a5; }
+.json-boolean { color: #fcd34d; }
+.json-null { color: #9ca3af; }
+
+/* JSON body overflow handling */
+.json-body {
+  padding: 16px;
+  max-width: 100%;
+  overflow: hidden;
+  word-wrap: break-word;
+}
+
+/* ========== Permission Action Buttons ========== */
+.json-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.json-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  outline: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.json-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.json-btn-approve {
+  background: var(--json-status-success-bg);
+  color: var(--json-status-success-text);
+  border: 1px solid var(--json-status-success-text);
+}
+
+.json-btn-approve:hover:not(:disabled) {
+  background: var(--json-status-success-text);
+  color: white;
+}
+
+.json-btn-reject {
+  background: var(--json-status-error-bg);
+  color: var(--json-status-error-text);
+  border: 1px solid var(--json-status-error-text);
+}
+
+.json-btn-reject:hover:not(:disabled) {
+  background: var(--json-status-error-text);
+  color: white;
+}
+
+/* ========== Status Badges ========== */
+.json-status-badge-container {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.json-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.json-status-badge.approved {
+  background: var(--json-status-success-bg);
+  color: var(--json-status-success-text);
+}
+
+.json-status-badge.rejected {
+  background: var(--json-status-error-bg);
+  color: var(--json-status-error-text);
 }

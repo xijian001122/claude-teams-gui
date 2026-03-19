@@ -1,0 +1,8 @@
+schema: spec-driven
+created: 2026-03-18
+updated: 2026-03-19
+summary: |
+  四态成员状态系统：busy(执行中) / idle(空闲) / occupied(繁忙) / offline(离线)
+  - FileWatcher 检测 idle_notification 和消息活动
+  - 状态转换自动化：busy→occupied(5分)→idle(30秒)→offline(30分)
+  - initMemberOffline 只在首次追踪时初始化，不覆盖已有状态

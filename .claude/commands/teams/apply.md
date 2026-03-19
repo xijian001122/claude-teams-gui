@@ -1,11 +1,20 @@
 ---
-name: teams:apply
-description: 启动 Agent Teams 协作，创建团队并分配任务
+name: "Teams: Apply"
+description: 启动 Agent Teams 协作，创建团队并按 OpenSpec 规范分配任务
+tags: [teams, collaboration, agent-teams, openspec]
 ---
 
 使用 Agent Teams 协作模式执行任务。
 
-**输入**: 可选指定任务描述。
+**输入**: 可选指定 OpenSpec change 名称（如 `/teams:apply add-driver-mgmt`），或直接描述任务。
+
+## ⚠️ 强制要求：OpenSpec 规范
+
+**所有任务分配必须遵循 OpenSpec 工作流：**
+
+1. **Team-lead 必须先执行 `openspec list` 确认变更**
+2. **分配任务时必须告知成员 change-name**
+3. **成员执行 `/opsx:apply <change-name>` 实现任务**
 
 ## 步骤 1 - 激活技能
 
@@ -16,24 +25,38 @@ Skill("agent-teams")
 读取技能文档：
 - `.claude/skills/agent-teams/QUICK_REF.md`
 - `.claude/skills/agent-teams/docs/workflow.md`
+- `.claude/skills/agent-teams/docs/task-management.md`
 
-## 步骤 2 - 检查并准备团队
+## 步骤 2 - 确认 OpenSpec 变更（必须）
+
+```bash
+# 查询活跃变更
+openspec list
+```
+
+**处理结果**：
+- 如果有多个变更或不确定 → 使用 AskUserQuestion 询问用户确认
+- 如果只有一个变更 → 直接使用
+- 如果没有变更 → 询问用户是否需要创建提案
+
+## 步骤 3 - 检查并准备团队
 
 检查是否已有活跃团队：
 ```bash
 test -d ~/.claude/teams/claude-teams-gui && echo "exists" || echo "not exists"
 ```
 
-**如果团队不存在**，按 agent-teams 规范创建完整四角色团队：
+**如果团队不存在**，按 agent-teams 规范创建：
 
 ```javascript
 // 1. 创建团队
 TeamCreate({
   team_name: "claude-teams-gui",
-  description: "前后端开发测试修复协作团队"
+  agent_type: "team-lead",
+  description: "前后端开发测试协作团队"
 })
 
-// 2. Spawn 前端开发者
+// 2. Spawn 前端开发者（kimi-k2.5 模型）
 Agent({
   name: "frontend-dev",
   description: "前端开发者 - 负责UI实现",
@@ -54,6 +77,8 @@ Agent({
 |------|------|
 | /frontend-dev | 前端开发技能 |
 | /websocket-protocol | WebSocket 协议规范 |
+| /opsx:explore <change-id> | 读取 OpenSpec 提案详情 |
+| /opsx:apply <change-id> | 执行 OpenSpec 任务 |
 
 ================================================================================
 🎓 可用技能
@@ -74,7 +99,7 @@ Agent({
 ⚠️ 工作流程（重要）
 ================================================================================
 1. 收到任务后，先评估需要激活哪些技能
-2. 使用 Skill() 工具激活所需技能
+2. 如果是 OpenSpec 任务，按消息中的两步命令执行
 3. 完成后使用 TaskUpdate 标记 completed
 4. 使用 SendMessage 通知 team-lead 完成情况`,
   subagent_type: "general-purpose",
@@ -82,7 +107,7 @@ Agent({
   team_name: "claude-teams-gui"
 })
 
-// 3. Spawn 后端开发者
+// 3. Spawn 后端开发者（glm-5 模型）
 Agent({
   name: "backend-dev",
   description: "后端开发者 - 负责API和服务",
@@ -103,6 +128,8 @@ Agent({
 |------|------|
 | /backend-dev | 后端开发技能 |
 | /websocket-protocol | WebSocket 协议规范 |
+| /opsx:explore <change-id> | 读取 OpenSpec 提案详情 |
+| /opsx:apply <change-id> | 执行 OpenSpec 任务 |
 
 ================================================================================
 🎓 可用技能
@@ -123,7 +150,7 @@ Agent({
 ⚠️ 工作流程（重要）
 ================================================================================
 1. 收到任务后，先评估需要激活哪些技能
-2. 使用 Skill() 工具激活所需技能
+2. 如果是 OpenSpec 任务，按消息中的两步命令执行
 3. 完成后使用 TaskUpdate 标记 completed
 4. 使用 SendMessage 通知 team-lead 完成情况`,
   subagent_type: "general-purpose",
@@ -131,11 +158,11 @@ Agent({
   team_name: "claude-teams-gui"
 })
 
-// 4. Spawn 测试者
+// 4. Spawn 测试者（glm-5 模型）
 Agent({
   name: "tester",
   description: "测试者 - 负责测试验证",
-  prompt: `你是 Claude Chat 项目的测试者，负责质量保证。
+  prompt: `你是 Claude Chat 项目的测试人员，负责验证功能的正确性。
 
 ================================================================================
 🎯 你的职责
@@ -152,6 +179,8 @@ Agent({
 |------|------|
 | /frontend-dev | 前端开发技能（了解组件结构）|
 | /backend-dev | 后端开发技能（了解 API 结构）|
+| /opsx:explore <change-id> | 读取 OpenSpec 提案详情 |
+| /opsx:apply <change-id> | 执行 OpenSpec 测试任务 |
 
 ================================================================================
 🎓 可用技能
@@ -180,7 +209,7 @@ Agent({
   team_name: "claude-teams-gui"
 })
 
-// 5. Spawn Bug修复者
+// 5. Spawn Bug修复者（glm-5 模型）
 Agent({
   name: "bug-fixer",
   description: "Bug修复者 - 负责问题修复",
@@ -231,55 +260,175 @@ Agent({
 })
 ```
 
-## 步骤 3 - 创建任务
+**如果团队已存在**，读取成员信息：
+```bash
+cat ~/.claude/teams/claude-teams-gui/config.json
+```
 
-根据任务描述创建任务：
+## 步骤 4 - 创建任务
+
+根据任务来源，按 agent-teams 规范创建任务。
+
+**任务描述必须包含强制技能评估指令**：
 
 ```javascript
+// 开发任务
 TaskCreate({
   subject: "<任务标题>",
-  description: `## 任务需求
+  description: `## ⚠️ 指令：强制技能激活流程（必须执行）
 
-<详细需求描述>
+在开始实现之前，你必须先完成以下步骤：
+
+### 步骤 1 - 评估技能需求
+**可用技能列表**（共11个）：
+- **frontend-dev**: 前端开发、Preact组件、TailwindCSS样式
+- **backend-dev**: 后端开发、Fastify路由、SQLite数据库
+- **websocket-protocol**: WebSocket通信协议
+- **project-arch**: 项目架构规范
+- **agent-teams**: Agent Teams协作规范
+
+### 步骤 2 - 激活技能
+- 如果任何技能评估为"是" → **必须**使用 Skill() 工具激活该技能
+- 如果所有技能评估为"否" → 说明"不需要激活任何技能"并继续
+
+### 步骤 3 - 读取技能文档（必须）
+**激活技能后，必须按以下顺序读取文档：**
+
+1. **读取 QUICK_REF.md**（如果存在）
+   - 位置: \`.claude/skills/\${skill-name}/QUICK_REF.md\`
+   - 提供快速概览和常用模式
+
+2. **读取相关主题文档**
+   - 位置: \`.claude/skills/\${skill-name}/docs/\${topic}.md\`
+   - 包含详细规范和示例代码
+
+3. **不要只依赖 SKILL.md**
+   - SKILL.md 只是导航中心
+   - 详细规范在 QUICK_REF.md 和 docs/ 中
+
+### 步骤 4 - 读取 OpenSpec 提案（如果适用）
+如果是 OpenSpec 任务：
+1. 检查当前分支
+2. 如果不在提案分支，调用 /opsx:continue <change-id>
+3. 如果已在提案分支，跳过此步
+
+### 步骤 5 - 实施任务
+- 只有在步骤 2-4 完成后，才能开始实现
+- 严格遵守已读取文档中的规范
+
+---
+
+## 任务需求
+
+<具体实现内容>
 
 ## 验收标准
 
-- <验收标准1>
-- <验收标准2>
+- 代码符合项目规范
+- 功能完整可用
 
 ## 参考
 
-- /frontend-dev 技能文档
-- /backend-dev 技能文档`,
+<相关模块路径>`,
   activeForm: "<进行中显示的文字>"
 })
+
+// 测试任务（依赖开发任务）
+TaskCreate({
+  subject: "测试 <功能名称>",
+  description: `## ⚠️ 指令：强制技能激活流程（必须执行）
+
+在开始测试之前，你必须先完成以下步骤：
+
+### 步骤 1 - 评估技能需求
+**可用技能列表**：
+- **frontend-dev**: 前端开发规范
+- **backend-dev**: 后端开发规范
+- **testing-standards**: 测试规范
+- **project-arch**: 项目架构
+
+**测试相关技能**：
+- **testing-standards**: 单元测试编写、Vitest
+
+### 步骤 2 - 激活技能
+- 如果任何技能评估为"是" → **必须**使用 Skill() 工具激活该技能
+- 如果所有技能评估为"否" → 说明"不需要激活任何技能"并继续
+
+### 步骤 3 - 读取技能文档（必须）
+**激活技能后，必须按以下顺序读取文档：**
+
+1. **读取 QUICK_REF.md**（如果存在）
+   - 位置: \`.claude/skills/\${skill-name}/QUICK_REF.md\`
+
+2. **读取相关主题文档**
+   - 位置: \`.claude/skills/\${skill-name}/docs/\${topic}.md\`
+
+3. **不要只依赖 SKILL.md**
+
+### 步骤 4 - 读取 OpenSpec 提案（如果适用）
+如果是 OpenSpec 任务：
+1. 检查当前分支
+2. 如果不在提案分支，调用 /opsx:continue <change-id>
+3. 如果已在提案分支，跳过此步
+
+### 步骤 5 - 编写测试
+- 只有在步骤 2-4 完成后，才能开始编写测试
+- 严格遵守测试规范
+
+---
+
+## 测试需求
+
+编写单元测试验证功能：
+- 测试正常流程
+- 测试边界条件
+- 测试异常情况
+
+## 验收标准
+
+- 使用 Vitest
+- 测试覆盖率 ≥ 80%
+- 所有测试通过`,
+  activeForm: "测试 <功能名称>"
+})
+
+// 设置依赖：测试任务依赖开发任务
+TaskUpdate({ taskId: "<test-id>", addBlockedBy: ["<dev-id>"] })
 ```
 
-## 步骤 4 - 分配任务并通知
+## 步骤 5 - 分配任务并通知（必须告知 change-name）
+
+**⚠️ 关键要求：分配消息必须包含 change-name**
 
 ```javascript
 // 分配任务
 TaskUpdate({
   taskId: "<task-id>",
-  owner: "frontend-dev",  // 或 backend-dev
+  owner: "frontend-dev",  // 或 backend-dev, tester, bug-fixer
   status: "in_progress"
 })
 
-// 通知成员
+// 通知成员（必须使用此模板）
 SendMessage({
-  to: "frontend-dev",  // 或 backend-dev
+  to: "frontend-dev",
   message: `任务 #<id> 已分配给你：<任务标题>
 
-🔧 开始前请：
-1. 激活技能：/frontend-dev（或 /backend-dev）
-2. 阅读技能文档
+📋 OpenSpec 变更：<change-name>
 
-完成后 TaskUpdate 标记完成并通知我。`,
-  summary: "分配任务 #<id>"
+🔧 执行命令：
+  /opsx:apply <change-name>
+
+⚠️ 注意：
+- /opsx:apply 会自动读取 proposal.md, design.md, tasks.md
+- 必须遵循 design.md 中的设计决策
+- 完成后 TaskUpdate 标记 completed 并通知我
+
+完成后通知我。`,
+  summary: "分配任务 #<id>（OpenSpec: <change-name>）"
 })
 ```
 
-## 步骤 5 - 显示状态
+## 步骤 6 - 显示状态
 
 输出当前团队状态：
 
@@ -287,39 +436,40 @@ SendMessage({
 ## Teams: Apply 已启动
 
 **团队**: claude-teams-gui
-**任务来源**: <任务描述>
-
-### 团队成员（四角色）
-| 角色 | 名称 | 模型 | 状态 |
-|------|------|------|------|
-| 前端开发 | frontend-dev | kimi-k2.5 | 就绪 |
-| 后端开发 | backend-dev | glm-5 | 就绪 |
-| 测试者 | tester | glm-5 | 就绪 |
-| Bug修复 | bug-fixer | glm-5 | 就绪 |
+**任务来源**: <OpenSpec change 名称 或 "手动描述">
 
 ### 已创建任务
 | ID | 任务 | 负责人 | 状态 |
 |----|------|--------|------|
-| 1  | <任务> | frontend-dev | in_progress |
+| 1  | <前端任务> | frontend-dev | in_progress |
+| 2  | <后端任务> | backend-dev | in_progress |
+| 3  | <测试任务> | - | pending (等待 #1, #2) |
+| 4  | <修复任务> | - | pending |
 
 ### 等待中
-成员正在处理任务...
+前端和后端开发者正在并行处理任务，完成后测试任务将自动解锁。
 
 使用 TaskList 查看实时进度。
 ```
-
-## 任务分配规则
-
-| 任务类型 | 关键词 | 分配给 |
-|---------|--------|--------|
-| 前端任务 | UI、组件、样式、页面、Preact | frontend-dev |
-| 后端任务 | API、路由、数据库、SQLite、服务 | backend-dev |
-| 测试任务 | 测试、test、spec、验证、QA | tester |
-| 修复任务 | bug、修复、fix、问题、错误 | bug-fixer |
 
 ## 注意事项
 
 - 团队成员 idle 是正常状态，不代表不可用
 - 发送消息后等待成员响应，不要重复发送
+- 如果成员长时间无响应，使用 SendMessage 再次通知
 - **任务完成后不要关闭团队**，保持团队活跃以便后续任务
-- **四角色团队**已自动创建：frontend-dev、backend-dev、tester、bug-fixer
+
+## OpenSpec 集成要求（重要）
+
+**如果任务来源是 OpenSpec change，必须严格遵守以下规范：**
+
+1. **读取 openspec-integration.md 文档**
+   ```
+   Read(".claude/skills/agent-teams/docs/openspec-integration.md")
+   ```
+
+2. **通知消息必须包含两步命令**
+   - 第一步：`/opsx:continue <change-name>`
+   - 第二步：`/opsx:apply <change-name>`
+
+3. **优先使用 `/opsx:apply` 自动激活技能**，也可在消息中额外列出需要手动激活的技能

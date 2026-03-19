@@ -7,11 +7,12 @@ import { existsSync } from 'fs';
 import { spawn } from 'child_process';
 import type { AppConfig } from '@shared/types';
 import { DatabaseService } from './db';
-import { DataSyncService, FileWatcherService, CleanupService, ConfigService } from './services';
+import { DataSyncService, FileWatcherService, CleanupService, ConfigService, MemberStatusService } from './services';
 import teamRoutes from './routes/teams';
 import messageRoutes from './routes/messages';
 import archiveRoutes from './routes/archive';
 import settingsRoutes from './routes/settings';
+import permissionResponseRoutes from './routes/permission-response';
 
 export interface ServerOptions {
   config: AppConfig;
@@ -55,14 +56,57 @@ export async function createServer(options: ServerOptions) {
   await dataSync.init();
   console.log('[Server] Data sync initialized');
 
+  // Initialize member status service (MUST be before file watcher)
+  const memberStatusService = new MemberStatusService();
+  console.log('[Server] Member status service initialized');
+
   // Initialize file watcher
   const fileWatcher = new FileWatcherService({
     claudeTeamsPath: config.teamsPath,
-    dataSync
+    dataSync,
+    onMemberActivity: (teamName, memberName, messageType) => {
+      // If it's an idle_notification, mark as idle; otherwise mark as busy
+      if (messageType === 'idle_notification') {
+        console.log(`[MemberStatus] ${memberName} is now idle`);
+        memberStatusService.markIdle(teamName, memberName);
+      } else {
+        console.log(`[MemberStatus] ${memberName} is busy`);
+        memberStatusService.markBusy(teamName, memberName);
+      }
+
+      // Broadcast updated status to all clients
+      if (fastify.websocketServer) {
+        const statuses = memberStatusService.getMemberStatuses(teamName);
+        fastify.websocketServer.clients.forEach((client: any) => {
+          if (client.readyState === 1) {
+            client.send(JSON.stringify({
+              type: 'member_status',
+              team: teamName,
+              members: statuses
+            }));
+          }
+        });
+      }
+    }
   });
 
   await fileWatcher.start();
   console.log('[Server] File watcher started');
+
+  // Initialize all existing team members as offline (FileWatcher ignoreInitial doesn't detect them)
+  try {
+    const teams = await db.getTeams();
+    for (const team of teams) {
+      if (team.members) {
+        for (const member of team.members) {
+          memberStatusService.initMemberOffline(team.name, member.name);
+        }
+      }
+    }
+    console.log(`[Server] Initialized ${teams.length} teams with offline status`);
+  } catch (err) {
+    console.error('[Server] Error initializing team members:', err);
+  }
 
   // Initialize cleanup service
   const cleanupService = new CleanupService(db, {
@@ -108,11 +152,12 @@ export async function createServer(options: ServerOptions) {
   // Register routes
   fastify.register(teamRoutes, { prefix: '/api/teams', db });
   fastify.register(messageRoutes, { prefix: '/api/teams', db, dataSync });
+  fastify.register(permissionResponseRoutes, { prefix: '/api/teams', db, claudeTeamsPath: config.teamsPath });
   fastify.register(archiveRoutes, { prefix: '/api/archive', db });
 
   // WebSocket handler - @fastify/websocket v10 passes socket directly
   fastify.register(async (fastify) => {
-    fastify.get('/ws', { websocket: true }, (socket: any, req: any) => {
+    fastify.get('/ws', { websocket: true }, (socket: any, _req: any) => {
       console.log('[WebSocket] Client connected');
 
       if (!socket || typeof socket.on !== 'function') {
@@ -128,6 +173,33 @@ export async function createServer(options: ServerOptions) {
             case 'join_team':
               // Client joining a team room
               console.log(`[WebSocket] Client joined team: ${data.team}`);
+              // Initialize all team members as offline (they'll be updated as they have activity)
+              (async () => {
+                try {
+                  const team = await db.getTeam(data.team);
+                  if (team?.members) {
+                    for (const member of team.members) {
+                      memberStatusService.initMemberOffline(data.team, member.name);
+                    }
+                  }
+                } catch (err) {
+                  console.error('[WebSocket] Error initializing team members:', err);
+                }
+
+                // Broadcast current status
+                const statuses = memberStatusService.getMemberStatuses(data.team);
+                if (fastify.websocketServer) {
+                  fastify.websocketServer.clients.forEach((client: any) => {
+                    if (client.readyState === 1) {
+                      client.send(JSON.stringify({
+                        type: 'member_status',
+                        team: data.team,
+                        members: statuses
+                      }));
+                    }
+                  });
+                }
+              })();
               break;
 
             case 'leave_team':
@@ -300,7 +372,7 @@ export async function createServer(options: ServerOptions) {
   process.on('SIGINT', () => shutdown(false));
   process.on('SIGTERM', () => shutdown(false));
 
-  return { fastify, db, dataSync, fileWatcher, cleanupService };
+  return { fastify, db, dataSync, fileWatcher, cleanupService, memberStatusService };
 }
 
 export default createServer;

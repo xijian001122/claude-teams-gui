@@ -100,9 +100,9 @@ export interface ConfigChange {
 // Member Status Types
 export interface MemberStatusInfo {
   memberName: string;
-  status: 'busy' | 'idle';
+  status: 'busy' | 'idle' | 'occupied' | 'offline';
   lastActivityAt: number; // Unix timestamp ms
-  taskDescription?: string; // Current task description (optional)
+  statusChangedAt: number; // When status last changed
 }
 
 export interface MemberStatusMessage {
@@ -137,6 +137,18 @@ export interface SendMessageBody {
 
 export interface UpdateMessageBody {
   content: string;
+}
+
+// Permission Response Types
+export interface PermissionResponseBody {
+  /** ID of the permission request being responded to */
+  request_id: string;
+  /** Whether the permission was approved */
+  approve: boolean;
+  /** Name of the agent that made the request (to write response to their inbox) */
+  agent_id: string;
+  /** Timestamp of the response */
+  timestamp?: string;
 }
 
 // WebSocket Types

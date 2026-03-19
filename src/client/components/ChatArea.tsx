@@ -1,28 +1,33 @@
 import { useEffect, useRef } from 'preact/hooks';
-import type { Team, Message, TeamMember } from '@shared/types';
+import type { Team, Message, TeamMember, MemberStatusInfo } from '@shared/types';
 import { MessageBubble, DateDivider } from './MessageBubble';
 import { InputBox } from './InputBox';
 import { Icon } from './Icon';
+import { OnlineMembersTrigger } from './OnlineMembersTrigger';
 import { isSameDay, parseISO } from 'date-fns';
 
 interface ChatAreaProps {
   team: Team | null;
   messages: Message[];
+  memberStatuses: MemberStatusInfo[];
   crossTeamTargets: Team[];
   onSendMessage: (content: string, to?: string) => void;
   onAvatarClick: (memberName: string) => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
+  onPermissionResponse?: (requestId: string, approve: boolean) => Promise<void>;
 }
 
 export function ChatArea({
   team,
   messages,
+  memberStatuses,
   crossTeamTargets,
   onSendMessage,
   onAvatarClick,
   theme,
-  onToggleTheme
+  onToggleTheme,
+  onPermissionResponse
 }: ChatAreaProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -39,6 +44,18 @@ export function ChatArea({
   const groupedMessages: Array<{ type: 'date'; date: Date } | { type: 'message'; message: Message; showAvatar: boolean }> = [];
 
   messages.forEach((message, index) => {
+    // Skip idle notifications
+    if (message.content.trim().startsWith('{') && message.content.trim().endsWith('}')) {
+      try {
+        const parsed = JSON.parse(message.content);
+        if (parsed.type === 'idle_notification') {
+          return; // Skip this message
+        }
+      } catch {
+        // Not valid JSON, continue processing
+      }
+    }
+
     const messageDate = parseISO(message.timestamp);
 
     // Add date divider if first message or different day
@@ -73,8 +90,12 @@ export function ChatArea({
           <h2 className="font-semibold text-[var(--text-primary)]">
             {team.displayName}
           </h2>
-          <div className="text-xs text-[var(--text-secondary)]">
-            {team.members.filter(m => m.isOnline).length} 人在线
+          {/* Online Members Trigger - 显示在团队名称下方 */}
+          <div className="mt-1">
+            <OnlineMembersTrigger
+              memberStatuses={memberStatuses}
+              currentUser="user"
+            />
           </div>
         </div>
 
@@ -121,6 +142,7 @@ export function ChatArea({
                   member={member}
                   onAvatarClick={onAvatarClick}
                   currentTeam={team?.name}
+                  onPermissionResponse={onPermissionResponse}
                 />
               );
             })}

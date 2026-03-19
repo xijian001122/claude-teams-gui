@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'preact/hooks';
-import type { Message, ConfigChange } from '@shared/types';
+import type { Message, ConfigChange, MemberStatusInfo } from '@shared/types';
 import { initBackendPort, getBackendPort } from '../utils/api';
 
 export interface WebSocketMessage {
@@ -11,6 +11,9 @@ export interface WebSocketMessage {
   targetTeam?: string;
   changes?: ConfigChange[];
   pendingRestart?: boolean;
+  members?: MemberStatusInfo[];
+  newPort?: number;
+  newHost?: string;
 }
 
 export function useWebSocket() {
@@ -117,6 +120,24 @@ export function useWebSocket() {
               type: data.type,
               changes: data.changes,
               pendingRestart: data.pendingRestart
+            });
+          }
+
+          if (data.type === 'member_status' && data.team) {
+            setLastMessage({
+              timestamp: Date.now(),
+              type: data.type,
+              team: data.team,
+              members: data.members
+            });
+          }
+
+          if (data.type === 'server_restarting') {
+            setLastMessage({
+              timestamp: Date.now(),
+              type: data.type,
+              newPort: data.newPort,
+              newHost: data.newHost
             });
           }
         } catch (err) {
