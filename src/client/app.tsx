@@ -122,6 +122,15 @@ export function App() {
       // Also reload active teams (archived team will be removed from active list)
       loadTeams();
     }
+
+    // Handle team added event
+    if (lastMessage.type === 'team_added' && lastMessage.team) {
+      console.log('[App] Team added:', lastMessage.team.name);
+      // Reload teams list to include the new team
+      loadTeams();
+      // Reload cross-team targets as new team may accept cross-team messages
+      loadCrossTeamTargets();
+    }
   }, [lastMessage?.timestamp]); // Use timestamp to ensure re-trigger
 
   const loadTeams = async () => {

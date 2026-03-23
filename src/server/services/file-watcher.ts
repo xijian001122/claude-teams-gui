@@ -43,12 +43,17 @@ export class FileWatcherService {
       depth: 0
     });
 
-    teamsWatcher.on('addDir', (path) => {
+    teamsWatcher.on('addDir', async (path) => {
       const teamName = path.split('/').pop();
       if (teamName && !teamName.startsWith('.')) {
         console.log(`[FileWatcher] New team detected: ${teamName}`);
         this.watchTeam(teamName);
-        this.dataSync.syncTeam(teamName);
+        const team = await this.dataSync.syncTeam(teamName);
+
+        // Broadcast team_added event to WebSocket clients
+        if (team) {
+          this.broadcastTeamAdded(team);
+        }
       }
     });
 
@@ -203,6 +208,31 @@ export class FileWatcherService {
     });
 
     console.log(`[WebSocket] Broadcasted team_instance_changed to ${sentCount} clients`);
+  }
+
+  /**
+   * Broadcast team_added event to WebSocket clients
+   */
+  private broadcastTeamAdded(team: { name: string; displayName?: string; status?: string }): void {
+    const wsServer = this.fastify.websocketServer;
+    if (!wsServer || !wsServer.clients) {
+      return;
+    }
+
+    const eventData = JSON.stringify({
+      type: 'team_added',
+      team
+    });
+
+    let sentCount = 0;
+    wsServer.clients.forEach((client: any) => {
+      if (client.readyState === 1) { // WebSocket.OPEN
+        client.send(eventData);
+        sentCount++;
+      }
+    });
+
+    console.log(`[WebSocket] Broadcasted team_added (${team.name}) to ${sentCount} clients`);
   }
 
   /**
