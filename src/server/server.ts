@@ -13,6 +13,7 @@ import messageRoutes from './routes/messages';
 import archiveRoutes from './routes/archive';
 import settingsRoutes from './routes/settings';
 import permissionResponseRoutes from './routes/permission-response';
+import tasksRoutes, { globalTasksRoutes } from './routes/tasks';
 
 export interface ServerOptions {
   config: AppConfig;
@@ -153,6 +154,8 @@ export async function createServer(options: ServerOptions) {
   fastify.register(teamRoutes, { prefix: '/api/teams', db });
   fastify.register(messageRoutes, { prefix: '/api/teams', db, dataSync });
   fastify.register(permissionResponseRoutes, { prefix: '/api/teams', db, claudeTeamsPath: config.teamsPath });
+  fastify.register(tasksRoutes, { prefix: '/api/teams' });
+  fastify.register(globalTasksRoutes, { prefix: '/api' });
   fastify.register(archiveRoutes, { prefix: '/api/archive', db });
 
   // WebSocket handler - @fastify/websocket v10 passes socket directly

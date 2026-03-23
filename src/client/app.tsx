@@ -2,6 +2,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
 import { SettingsPage } from './components/SettingsPage';
+import { TaskPanel } from './components/TaskPanel';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useTheme } from './hooks/useTheme';
 import type { Team, Message, ConfigChange, MemberStatusInfo } from '@shared/types';
@@ -331,6 +332,9 @@ export function App() {
           onPermissionResponse={handlePermissionResponse}
         />
       )}
+
+      {/* Task Panel */}
+      <TaskPanel currentTeam={currentTeam} />
     </div>
   );
 }

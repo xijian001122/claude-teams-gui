@@ -118,6 +118,33 @@ export interface ConfigUpdateEvent {
   pendingRestart: boolean;
 }
 
+// Task Types
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'deleted';
+
+export type TaskHistoryField = 'status' | 'owner' | 'subject' | 'description';
+
+export interface TaskHistoryEntry {
+  timestamp: string;
+  field: TaskHistoryField;
+  oldValue: string | null;
+  newValue: string;
+  changedBy?: string;
+}
+
+export interface Task {
+  id: string;
+  subject: string;
+  description?: string;
+  status: TaskStatus;
+  owner?: string;
+  blockedBy?: string[];
+  activeForm?: string;
+  metadata?: Record<string, unknown>;
+  history?: TaskHistoryEntry[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // API Types
 export interface ApiResponse<T> {
   success: boolean;
