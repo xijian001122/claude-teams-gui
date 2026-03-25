@@ -15,7 +15,13 @@ export const DEFAULT_CONFIG = {
   desktopNotifications: true,
   soundEnabled: false,
   cleanupEnabled: true,
-  cleanupTime: '02:00'
+  cleanupTime: '02:00',
+  logConfig: {
+    enabled: true,
+    level: 'info' as const,
+    maxSize: 10,     // 10MB
+    maxDays: 7       // 7 days
+  }
 };
 
 // Database

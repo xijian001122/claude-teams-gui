@@ -3,6 +3,7 @@ import type { ConfigChange, AppConfig } from '@shared/types';
 import { Icon } from './Icon';
 import { ConfigChangeDialog } from './ConfigChangeDialog';
 import { ToastContainer, useToast } from './Toast';
+import { LogConfigPanel } from './LogConfigPanel';
 import { api } from '../utils/api';
 
 interface SettingsPageProps {
@@ -31,7 +32,7 @@ export function SettingsPage({ pendingConfigRestart, pendingChanges, onRestartCo
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'advanced'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'advanced' | 'logging'>('general');
   const [currentChanges, setCurrentChanges] = useState<ConfigChange[]>([]);
   const { toasts, closeToast, success, error } = useToast();
 
@@ -245,6 +246,11 @@ export function SettingsPage({ pendingConfigRestart, pendingChanges, onRestartCo
             onClick={() => setActiveTab('advanced')}
             label="高级"
           />
+          <TabButton
+            active={activeTab === 'logging'}
+            onClick={() => setActiveTab('logging')}
+            label="日志"
+          />
         </div>
       </div>
 
@@ -302,6 +308,12 @@ export function SettingsPage({ pendingConfigRestart, pendingChanges, onRestartCo
               field="cleanupEnabled"
               onChange={updateConfig}
             />
+          </div>
+        )}
+
+        {activeTab === 'logging' && (
+          <div className="max-w-lg">
+            <LogConfigPanel />
           </div>
         )}
       </div>

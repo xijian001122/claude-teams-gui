@@ -7,13 +7,14 @@ import { existsSync } from 'fs';
 import { spawn } from 'child_process';
 import type { AppConfig } from '@shared/types';
 import { DatabaseService } from './db';
-import { DataSyncService, FileWatcherService, CleanupService, ConfigService, MemberStatusService } from './services';
+import { DataSyncService, FileWatcherService, CleanupService, ConfigService, MemberStatusService, LoggerService } from './services';
 import teamRoutes from './routes/teams';
 import messageRoutes from './routes/messages';
 import archiveRoutes from './routes/archive';
 import settingsRoutes from './routes/settings';
 import permissionResponseRoutes from './routes/permission-response';
 import tasksRoutes, { globalTasksRoutes } from './routes/tasks';
+import { logsRoutes } from './routes';
 
 export interface ServerOptions {
   config: AppConfig;
@@ -42,6 +43,12 @@ export async function createServer(options: ServerOptions) {
   const db = new DatabaseService(dataDir);
   console.log('[Server] Database initialized');
 
+  // Initialize logger service
+  const logDir = join(dataDir, 'logs');
+  const loggerService = new LoggerService(logDir, config.logConfig);
+  await loggerService.init();
+  console.log('[Server] Logger service initialized');
+
   // Initialize config service (but don't start watching yet)
   const configPath = join(dataDir, 'config.json');
   const configService = new ConfigService(configPath, config);
@@ -65,6 +72,7 @@ export async function createServer(options: ServerOptions) {
   const fileWatcher = new FileWatcherService({
     claudeTeamsPath: config.teamsPath,
     dataSync,
+    fastify,
     onMemberActivity: (teamName, memberName, messageType) => {
       // If it's an idle_notification, mark as idle; otherwise mark as busy
       if (messageType === 'idle_notification') {
@@ -147,6 +155,12 @@ export async function createServer(options: ServerOptions) {
         cleanupTime: currentConfig.cleanupTime
       });
     }
+
+    // Update logger service if log config changed
+    const logConfigChange = changes.find(c => c.key === 'logConfig');
+    if (logConfigChange) {
+      loggerService.updateConfig(logConfigChange.newValue);
+    }
   });
   console.log('[Server] Config service started');
 
@@ -157,6 +171,7 @@ export async function createServer(options: ServerOptions) {
   fastify.register(tasksRoutes, { prefix: '/api/teams' });
   fastify.register(globalTasksRoutes, { prefix: '/api' });
   fastify.register(archiveRoutes, { prefix: '/api/archive', db });
+  fastify.register(logsRoutes, { prefix: '/api/logs', configService });
 
   // WebSocket handler - @fastify/websocket v10 passes socket directly
   fastify.register(async (fastify) => {
@@ -333,6 +348,7 @@ export async function createServer(options: ServerOptions) {
     fileWatcher.stop();
     configService.stopWatching();
     cleanupService.stop();
+    loggerService.destroy();
     db.close();
 
     await fastify.close();
@@ -375,7 +391,7 @@ export async function createServer(options: ServerOptions) {
   process.on('SIGINT', () => shutdown(false));
   process.on('SIGTERM', () => shutdown(false));
 
-  return { fastify, db, dataSync, fileWatcher, cleanupService, memberStatusService };
+  return { fastify, db, dataSync, fileWatcher, cleanupService, memberStatusService, loggerService };
 }
 
 export default createServer;

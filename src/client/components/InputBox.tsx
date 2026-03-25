@@ -1,11 +1,13 @@
 import { useState, useRef, useCallback } from 'preact/hooks';
 import type { TeamMember, Team } from '@shared/types';
 import { Icon } from './Icon';
+import { analyzeLogs, generateReport } from '../services/logAnalysis';
 
 interface InputBoxProps {
   members: TeamMember[];
   crossTeamTargets: Team[];
   onSend: (content: string, to?: string) => void;
+  onSendSystemMessage?: (content: string) => void;
   disabled?: boolean;
 }
 
@@ -16,6 +18,7 @@ export function InputBox({ members, crossTeamTargets, onSend, disabled }: InputB
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [showTeamSelector, setShowTeamSelector] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const filteredMembers = members.filter(m =>
@@ -97,9 +100,39 @@ export function InputBox({ members, crossTeamTargets, onSend, disabled }: InputB
     }
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = content.trim();
     if (!trimmed || disabled) return;
+
+    // Handle /log-fix command
+    if (trimmed.startsWith('/log-fix')) {
+      setIsAnalyzing(true);
+      setContent(''); // Clear input
+
+      // Show loading message
+      const loadingContent = '🔍 正在分析日志，请稍候...';
+      onSend(loadingContent);
+
+      try {
+        // Analyze logs
+        const result = await analyzeLogs();
+        const report = generateReport(result);
+
+        // Send report as system message
+        onSend(report);
+      } catch (err) {
+        console.error('Log analysis failed:', err);
+        onSend('❌ 日志分析失败: ' + (err instanceof Error ? err.message : '未知错误'));
+      } finally {
+        setIsAnalyzing(false);
+      }
+
+      // Reset textarea height
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
+      return;
+    }
 
     // Parse @mentions (supports hyphens in member names like @bug-fixer)
     const mentionMatch = trimmed.match(/@([\w-]+)/);
@@ -208,9 +241,15 @@ export function InputBox({ members, crossTeamTargets, onSend, disabled }: InputB
           value={content}
           onInput={handleInput}
           onKeyDown={handleKeyDown}
-          placeholder={disabled ? "此团队已归档，无法发送消息" : "输入消息... 使用 @ 提及成员"}
-          disabled={disabled}
-          className={`input-box flex-1 ${disabled ? 'bg-[var(--bg-secondary)] opacity-60 cursor-not-allowed' : ''}`}
+          placeholder={
+            disabled
+              ? "此团队已归档，无法发送消息"
+              : isAnalyzing
+              ? "正在分析日志..."
+              : "输入消息... 使用 @ 提及成员，输入 /log-fix 分析日志"
+          }
+          disabled={disabled || isAnalyzing}
+          className={`input-box flex-1 ${disabled || isAnalyzing ? 'bg-[var(--bg-secondary)] opacity-60 cursor-not-allowed' : ''}`}
           rows={1}
         />
         {crossTeamTargets.length > 0 && (
@@ -224,7 +263,7 @@ export function InputBox({ members, crossTeamTargets, onSend, disabled }: InputB
         )}
         <button
           onClick={handleSend}
-          disabled={!content.trim() || disabled}
+          disabled={!content.trim() || disabled || isAnalyzing}
           className="btn btn-primary self-end py-2 px-3"
         >
           <Icon icon="send" size={18} />

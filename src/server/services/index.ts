@@ -5,3 +5,4 @@ export * from './config';
 export * from './member-status';
 export * from './task-storage';
 export * from './session-summary';
+export * from './logger';

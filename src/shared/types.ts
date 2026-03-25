@@ -90,9 +90,15 @@ export interface AppConfig {
   soundEnabled: boolean;
   cleanupEnabled: boolean;
   cleanupTime: string;
+  logConfig?: LogConfig;
 }
 
-// Config Update Types
+export interface LogConfig {
+  enabled: boolean;
+  level: 'error' | 'info' | 'console';
+  maxSize: number;
+  maxDays: number;
+}
 export interface ConfigChange {
   key: string;
   oldValue: any;
