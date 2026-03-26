@@ -9,6 +9,7 @@
  * Output format: JSON with systemMessage to display in Claude Code conversation
  */
 
+const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
 const BACKEND_URL = process.env.CLAUDE_CHAT_URL || 'http://localhost:4558';
 const AUTO_START = process.env.CLAUDE_CHAT_AUTO_START !== 'false';
 const STARTUP_TIMEOUT = 30000; // 30 seconds

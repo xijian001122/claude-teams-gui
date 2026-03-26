@@ -1,12 +1,23 @@
 {
   "name": "claude-teams-gui",
-  "version": "1.0.0",
-  "description": "Claude Teams GUI - Auto-start servers and real-time task notifications",
+  "version": "0.1.1",
+  "description": "Visual chat interface for Claude Code Teams - Auto-start GUI servers and real-time task notifications",
   "author": {
-    "name": "Claude Agent GUI Team"
+    "name": "Claude Teams GUI Team",
+    "email": "support@claude-teams-gui.dev"
   },
-  "repository": "https://github.com/claude-chat/notifier-plugin",
-  "license": "MIT",
-  "keywords": ["claude-chat", "tasks", "notifications", "websocket", "auto-start"],
-  "hooks": "../hooks/hooks.json"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xijian001122/claude-teams-gui"
+  },
+  "license": "GPL-3.0",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "teams",
+    "gui",
+    "websocket",
+    "notifications",
+    "hooks"
+  ]
 }

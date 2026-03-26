@@ -1,28 +1,26 @@
 {
+  "description": "Claude Teams GUI hooks - Auto-start GUI servers and real-time task notifications",
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.js",
             "timeout": 30
           }
-        ],
-        "description": "Auto-start Claude Agent GUI servers on session start"
+        ]
       }
     ],
     "TaskCreated": [
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/task-created.js"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/task-created.js",
+            "timeout": 10
           }
-        ],
-        "description": "Notify Claude Agent GUI when tasks are created"
+        ]
       }
     ]
   }

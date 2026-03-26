@@ -30,9 +30,36 @@ When working with multiple Claude Code Teams simultaneously (e.g., developing se
 
 ## Current Version
 
-**v0.1.0**
+**v0.1.1**
 
 See [CHANGELOG.md](./CHANGELOG.md) for release history.
+
+---
+
+## Installation as Claude Plugin (Recommended)
+
+Install directly in Claude Code for automatic startup and real-time notifications:
+
+```bash
+claude plugin install github:xijian001122/claude-teams-gui
+```
+
+### Included Hooks
+
+| Hook | Description |
+|------|-------------|
+| `SessionStart` | Auto-starts GUI servers when Claude Code starts |
+| `TaskCreated` | Sends real-time notification when tasks are created |
+
+### Verify Installation
+
+```bash
+# List installed plugins
+claude plugin list
+
+# Check plugin status
+claude plugin status claude-teams-gui
+```
 
 ---
 
