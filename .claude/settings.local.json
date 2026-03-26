@@ -99,7 +99,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /root/claude-chat/.claude/hooks/skill-forced-eval.js"
+            "command": "node ./.claude/hooks/skill-forced-eval.js"
           }
         ]
       }
@@ -110,11 +110,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /root/claude-chat/.claude/hooks/session-start.js"
+            "command": "node ./.claude/hooks/session-start.js"
           },
           {
             "type": "command",
-            "command": "node /root/claude-chat/hooks/session-start.js"
+            "command": "node ./hooks/session-start.js"
           }
         ]
       }
@@ -125,7 +125,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /root/claude-chat/.claude/hooks/pre-tool-use.js"
+            "command": "node ./.claude/hooks/pre-tool-use.js"
           }
         ]
       }
@@ -136,7 +136,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /root/claude-chat/.claude/hooks/post-tool-use.js"
+            "command": "node ./.claude/hooks/post-tool-use.js"
           }
         ]
       }
@@ -147,7 +147,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /root/claude-chat/.claude/hooks/stop-hook.js"
+            "command": "node ./.claude/hooks/stop-hook.js"
           }
         ]
       }
