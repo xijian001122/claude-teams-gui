@@ -12,7 +12,7 @@ import { DEFAULT_CONFIG } from '@shared/constants';
 const program = new Command();
 
 program
-  .name('claude-chat')
+  .name('claude-teams-gui')
   .description('Visual chat interface for Claude Code Teams')
   .version('0.1.0');
 

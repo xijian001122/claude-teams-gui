@@ -121,7 +121,7 @@
 ## 项目结构
 
 ```
-claude-chat/
+claude-teams-gui/
 ├── src/
 │   ├── server/                 # 服务端代码
 │   │   ├── index.ts            # 入口
@@ -896,7 +896,7 @@ export const useAppStore = create<AppState>()(
       }
     }),
     {
-      name: 'claude-chat-storage',
+      name: 'claude-teams-gui-storage',
       partialize: (state) => ({
         theme: state.theme,
         currentTeam: state.currentTeam
@@ -914,8 +914,8 @@ export const useAppStore = create<AppState>()(
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yourname/claude-chat.git
-cd claude-chat
+git clone https://github.com/yourname/claude-teams-gui.git
+cd claude-teams-gui
 
 # 安装依赖
 npm install
@@ -996,7 +996,7 @@ npm run build:prod
 npm start
 
 # 或使用 pm2
-pm2 start dist/server/index.js --name claude-chat
+pm2 start dist/server/index.js --name claude-teams-gui
 ```
 
 ### Docker 部署
@@ -1014,14 +1014,14 @@ CMD ["node", "dist/server/index.js"]
 
 ```bash
 # 构建镜像
-docker build -t claude-chat .
+docker build -t claude-teams-gui .
 
 # 运行
 docker run -d \
   -p 3456:3456 \
-  -v ~/.claude-chat:/app/data \
+  -v ~/.claude-teams-gui:/app/data \
   -v $(pwd)/.claude/teams:/app/teams \
-  claude-chat
+  claude-teams-gui
 ```
 
 ---

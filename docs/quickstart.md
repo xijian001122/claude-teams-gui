@@ -5,21 +5,21 @@
 ### 方式一：npm 全局安装（推荐）
 
 ```bash
-npm install -g claude-chat
-claude-chat
+npm install -g claude-teams-gui
+claude-teams-gui
 ```
 
 ### 方式二：使用 npx（无需安装）
 
 ```bash
-npx claude-chat
+npx claude-teams-gui
 ```
 
 ### 方式三：源码安装
 
 ```bash
-git clone https://github.com/yourname/claude-chat.git
-cd claude-chat
+git clone https://github.com/yourname/claude-teams-gui.git
+cd claude-teams-gui
 npm install
 npm run build
 npm start
@@ -32,10 +32,10 @@ npm start
 ### 1. 启动服务
 
 ```bash
-$ claude-chat
+$ claude-teams-gui
 ✓ Server started at http://localhost:3456
 ✓ WebSocket listening on ws://localhost:3456/ws
-✓ Database initialized at ~/.claude-chat/
+✓ Database initialized at ~/.claude-teams-gui/
 ✓ Auto-detected 2 teams from .claude/teams/
 
 Opening browser...
@@ -114,12 +114,12 @@ Opening browser...
 ## 命令行参数
 
 ```bash
-claude-chat [options]
+claude-teams-gui [options]
 
 Options:
   -p, --port <port>        指定端口 (默认: 3456)
   -h, --host <host>        指定主机 (默认: localhost)
-  -d, --data <path>        数据目录 (默认: ~/.claude-chat)
+  -d, --data <path>        数据目录 (默认: ~/.claude-teams-gui)
   --teams <path>           Claude Teams 路径 (默认: ./.claude/teams)
   --headless               仅启动服务器，不打开浏览器
   --no-sync                禁用 Claude Teams 同步
@@ -127,9 +127,9 @@ Options:
   --help                   显示帮助
 
 Examples:
-  claude-chat --port 8080
-  claude-chat --data ~/my-chat-data
-  claude-chat --headless
+  claude-teams-gui --port 8080
+  claude-teams-gui --data ~/my-chat-data
+  claude-teams-gui --headless
 ```
 
 ---
@@ -140,10 +140,10 @@ Examples:
 
 ```bash
 # 在 Claude Code 会话中
-/claude-chat
+/claude-teams-gui
 
 # 指定端口
-/claude-chat --port 8080
+/claude-teams-gui --port 8080
 ```
 
 **注意事项：**
@@ -154,13 +154,13 @@ Examples:
 
 ## 配置
 
-配置文件位于 `~/.claude-chat/config.json`：
+配置文件位于 `~/.claude-teams-gui/config.json`：
 
 ```json
 {
   "port": 3456,
   "host": "localhost",
-  "dataDir": "~/.claude-chat",
+  "dataDir": "~/.claude-teams-gui",
   "retentionDays": 90,
   "theme": "auto",
   "desktopNotifications": true,
@@ -179,7 +179,7 @@ Examples:
 
 **方式二：直接编辑文件**
 ```bash
-vim ~/.claude-chat/config.json
+vim ~/.claude-teams-gui/config.json
 # 修改后重启服务
 ```
 
@@ -190,7 +190,7 @@ vim ~/.claude-chat/config.json
 ### 数据目录结构
 
 ```
-~/.claude-chat/
+~/.claude-teams-gui/
 ├── config.json              # 配置文件
 ├── teams/                   # 活跃团队数据
 │   ├── dev-test-team/
@@ -210,20 +210,20 @@ vim ~/.claude-chat/config.json
 
 ```bash
 # 备份整个数据目录
-cp -r ~/.claude-chat ~/claude-chat-backup
+cp -r ~/.claude-teams-gui ~/claude-teams-gui-backup
 
 # 或导出特定团队
-claude-chat export dev-test-team --output ./backup.zip
+claude-teams-gui export dev-test-team --output ./backup.zip
 ```
 
 ### 恢复数据
 
 ```bash
 # 恢复备份
-cp -r ~/claude-chat-backup ~/.claude-chat
+cp -r ~/claude-teams-gui-backup ~/.claude-teams-gui
 
 # 或导入导出文件
-claude-chat import ./backup.zip
+claude-teams-gui import ./backup.zip
 ```
 
 ### 清理数据
@@ -236,13 +236,13 @@ claude-chat import ./backup.zip
 **手动清理：**
 ```bash
 # 清理过期数据
-claude-chat cleanup
+claude-teams-gui cleanup
 
 # 清理特定团队
-claude-chat cleanup --team dev-test-team
+claude-teams-gui cleanup --team dev-test-team
 
 # 永久删除归档团队
-claude-chat archive delete dev-test-team-20250317
+claude-teams-gui archive delete dev-test-team-20250317
 ```
 
 ---
@@ -283,7 +283,7 @@ claude-chat archive delete dev-test-team-20250317
 # 错误：Port 3456 is already in use
 
 # 解决：更换端口
-claude-chat --port 8080
+claude-teams-gui --port 8080
 ```
 
 ### 无法检测 Teams
@@ -293,7 +293,7 @@ claude-chat --port 8080
 pwd  # 应该包含 .claude/teams/
 
 # 或手动指定路径
-claude-chat --teams /path/to/.claude/teams
+claude-teams-gui --teams /path/to/.claude/teams
 ```
 
 ### 消息不实时更新
@@ -306,11 +306,11 @@ claude-chat --teams /path/to/.claude/teams
 
 ```bash
 # 备份现有数据
-cp ~/.claude-chat/teams/dev-test-team/messages.db ~/.claude-chat/teams/dev-test-team/messages.db.bak
+cp ~/.claude-teams-gui/teams/dev-test-team/messages.db ~/.claude-teams-gui/teams/dev-test-team/messages.db.bak
 
 # 使用 SQLite 修复
-sqlite3 ~/.claude-chat/teams/dev-test-team/messages.db ".recover" | sqlite3 fixed.db
-mv fixed.db ~/.claude-chat/teams/dev-test-team/messages.db
+sqlite3 ~/.claude-teams-gui/teams/dev-test-team/messages.db ".recover" | sqlite3 fixed.db
+mv fixed.db ~/.claude-teams-gui/teams/dev-test-team/messages.db
 ```
 
 ---
@@ -335,20 +335,20 @@ mv fixed.db ~/.claude-chat/teams/dev-test-team/messages.db
 
 ```bash
 # 检查更新
-claude-chat --version
+claude-teams-gui --version
 
 # 更新到最新版
-npm update -g claude-chat
+npm update -g claude-teams-gui
 
 # 或重新安装
-npm uninstall -g claude-chat
-npm install -g claude-chat
+npm uninstall -g claude-teams-gui
+npm install -g claude-teams-gui
 ```
 
 ---
 
 ## 获取帮助
 
-- **GitHub Issues**: https://github.com/yourname/claude-chat/issues
-- **文档**: https://github.com/yourname/claude-chat/tree/main/docs
-- **Discussions**: https://github.com/yourname/claude-chat/discussions
+- **GitHub Issues**: https://github.com/yourname/claude-teams-gui/issues
+- **文档**: https://github.com/yourname/claude-teams-gui/tree/main/docs
+- **Discussions**: https://github.com/yourname/claude-teams-gui/discussions
