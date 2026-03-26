@@ -187,6 +187,68 @@ git push origin --delete feature/abandoned
 
 👉 [详细说明](docs/workflow-checks.md)
 
+## 版本管理模板
+
+### 版本递增
+
+```bash
+# 确保在 main 分支
+git checkout main
+git pull origin main
+
+# 运行 standard-version（自动更新版本号和 CHANGELOG）
+npm run release
+
+# 推送代码和 tag
+git push --follow-tags origin main
+```
+
+### 版本号规则
+
+| 提交类型 | 版本递增 | 示例 |
+|---------|---------|------|
+| `feat:` | minor | 0.1.0 → 0.2.0 |
+| `fix:` | patch | 0.1.0 → 0.1.1 |
+| `BREAKING CHANGE:` | major | 0.1.0 → 1.0.0 |
+
+## Release 发布模板
+
+### 创建 Release
+
+```bash
+# 方式一：gh CLI（推荐）
+gh release create v0.1.0 --title "v0.1.0" --generate-notes
+
+# 方式二：编辑添加双语说明
+gh release edit v0.1.0 --notes "$(cat <<'EOF'
+# What's Changed / 更新内容
+
+## English
+- Feature description...
+
+## 中文
+- 功能描述...
+
+**Full Changelog**: https://github.com/xijian001122/claude-teams-gui/compare/v0.0.1...v0.1.0
+EOF
+)"
+```
+
+### gh CLI 安装和登录
+
+```bash
+# 安装 gh
+curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
+  dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] \
+  https://cli.github.com/packages stable main" | \
+  tee /etc/apt/sources.list.d/github-cli-packages > /dev/null
+apt update && apt install gh
+
+# 登录
+gh auth login
+```
+
 ## 相关文档
 
 - [分支策略](docs/branch-strategy.md)
