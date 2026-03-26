@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.2](https://github.com/xijian001122/claude-teams-gui/compare/v0.1.1...v0.1.2) (2026-03-26)
+
+
+### Features
+
+* 添加 Claude 插件支持 ([b61ff9f](https://github.com/xijian001122/claude-teams-gui/commit/b61ff9f20c39024084dff8860b056cd1da7cef84))
+
 ### [0.1.1](https://github.com/xijian001122/claude-teams-gui/compare/v0.1.0...v0.1.1) (2026-03-26)
 
 

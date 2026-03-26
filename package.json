@@ -1,6 +1,6 @@
 {
   "name": "claude-teams-gui",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Visual chat interface for Claude Code Teams",
   "main": "dist/server/index.js",
   "bin": {
