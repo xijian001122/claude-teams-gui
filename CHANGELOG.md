@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.1](https://github.com/xijian001122/claude-teams-gui/compare/v0.1.0...v0.1.1) (2026-03-26)
+
+
+### Features
+
+* 项目重命名为 claude-teams-gui 并添加双语 README ([87c4464](https://github.com/xijian001122/claude-teams-gui/commit/87c4464259d96048fa3af4f8eebdeadbb710d120))
+
 ## 0.1.0 (2026-03-26)
 
 
