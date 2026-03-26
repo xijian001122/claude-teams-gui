@@ -3,13 +3,10 @@
   "version": "0.1.1",
   "description": "Visual chat interface for Claude Code Teams - Auto-start GUI servers and real-time task notifications",
   "author": {
-    "name": "Claude Teams GUI Team",
-    "email": "support@claude-teams-gui.dev"
+    "name": "xijian001122",
+    "email": "xijian001122@163.com"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/xijian001122/claude-teams-gui"
-  },
+  "repository": "https://github.com/xijian001122/claude-teams-gui",
   "license": "GPL-3.0",
   "keywords": [
     "claude",

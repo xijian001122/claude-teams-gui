@@ -1,0 +1,34 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-teams-gui-marketplace",
+  "description": "Claude Teams GUI - Visual chat interface for Claude Code Teams with real-time messaging and notifications",
+  "owner": {
+    "name": "xijian001122",
+    "email": "xijian001122@163.com"
+  },
+  "plugins": [
+    {
+      "name": "claude-teams-gui",
+      "description": "Visual chat interface for Claude Code Teams - Auto-start GUI servers and real-time task notifications. Provides WeChat-like messaging experience for AI agent collaboration.",
+      "version": "0.1.2",
+      "author": {
+        "name": "xijian001122",
+        "email": "xijian001122@163.com"
+      },
+      "source": "./",
+      "category": "productivity",
+      "homepage": "https://github.com/xijian001122/claude-teams-gui",
+      "keywords": [
+        "claude",
+        "claude-code",
+        "teams",
+        "gui",
+        "websocket",
+        "notifications",
+        "hooks",
+        "chat",
+        "messaging"
+      ]
+    }
+  ]
+}
