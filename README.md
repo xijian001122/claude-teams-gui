@@ -38,10 +38,18 @@ See [CHANGELOG.md](./CHANGELOG.md) for release history.
 
 ## Installation as Claude Plugin (Recommended)
 
-Install directly in Claude Code for automatic startup and real-time notifications:
+Install in Claude Code for automatic startup and real-time notifications:
+
+### Step 1: Add Plugin Marketplace
 
 ```bash
-claude plugin install github:xijian001122/claude-teams-gui
+claude plugin marketplace add github:xijian001122/claude-teams-gui
+```
+
+### Step 2: Install Plugin
+
+```bash
+claude plugin install claude-teams-gui
 ```
 
 ### Included Hooks
@@ -57,8 +65,8 @@ claude plugin install github:xijian001122/claude-teams-gui
 # List installed plugins
 claude plugin list
 
-# Check plugin status
-claude plugin status claude-teams-gui
+# View configured marketplaces
+claude plugin marketplace list
 ```
 
 ---
