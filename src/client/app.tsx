@@ -5,7 +5,7 @@ import { SettingsPage } from './components/SettingsPage';
 import { TaskPanel } from './components/TaskPanel';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useTheme } from './hooks/useTheme';
-import type { Team, Message, ConfigChange, MemberStatusInfo } from '@shared/types';
+import type { Team, Message, ConfigChange, MemberStatusInfo, Task } from '@shared/types';
 import { api } from './utils/api';
 
 export function App() {
@@ -21,6 +21,9 @@ export function App() {
   const [pendingConfigRestart, setPendingConfigRestart] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<ConfigChange[]>([]);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Tasks state for real-time updates
+  const [tasks, setTasks] = useState<Map<string, Task[]>>(new Map());
 
   const { theme, toggleTheme } = useTheme();
   const { lastMessage, connected } = useWebSocket();
@@ -131,6 +134,36 @@ export function App() {
       loadTeams();
       // Reload cross-team targets as new team may accept cross-team messages
       loadCrossTeamTargets();
+    }
+
+    // Handle task created event
+    if (lastMessage.type === 'task_created' && lastMessage.task && lastMessage.team) {
+      console.log('[App] Task created:', lastMessage.task.id, 'for team:', lastMessage.team);
+
+      const { task, team } = lastMessage;
+
+      // Only add task if it belongs to current team (team filtering)
+      if (team !== currentTeam) {
+        console.log('[App] Task created for different team, ignoring:', team);
+        return;
+      }
+
+      // Add task to state with deduplication
+      setTasks(prev => {
+        const teamTasks = prev.get(team) || [];
+
+        // Check for duplicate task ID
+        if (teamTasks.some(t => t.id === task.id)) {
+          console.log('[App] Task already exists, skipping:', task.id);
+          return prev;
+        }
+
+        // Add new task to the list
+        const newMap = new Map(prev);
+        newMap.set(team, [...teamTasks, task]);
+        console.log('[App] Added new task to team:', team, 'Total tasks:', teamTasks.length + 1);
+        return newMap;
+      });
     }
   }, [lastMessage?.timestamp]); // Use timestamp to ensure re-trigger
 
@@ -334,7 +367,7 @@ export function App() {
       )}
 
       {/* Task Panel */}
-      <TaskPanel currentTeam={currentTeam} />
+      <TaskPanel currentTeam={currentTeam} tasks={tasks.get(currentTeam || '') || []} />
     </div>
   );
 }

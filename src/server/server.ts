@@ -14,7 +14,7 @@ import archiveRoutes from './routes/archive';
 import settingsRoutes from './routes/settings';
 import permissionResponseRoutes from './routes/permission-response';
 import tasksRoutes, { globalTasksRoutes } from './routes/tasks';
-import { logsRoutes } from './routes';
+import { logsRoutes, hooksRoutes } from './routes';
 
 export interface ServerOptions {
   config: AppConfig;
@@ -172,6 +172,7 @@ export async function createServer(options: ServerOptions) {
   fastify.register(globalTasksRoutes, { prefix: '/api' });
   fastify.register(archiveRoutes, { prefix: '/api/archive', db });
   fastify.register(logsRoutes, { prefix: '/api/logs', configService });
+  fastify.register(hooksRoutes, { prefix: '/api/hooks', fastify });
 
   // WebSocket handler - @fastify/websocket v10 passes socket directly
   fastify.register(async (fastify) => {

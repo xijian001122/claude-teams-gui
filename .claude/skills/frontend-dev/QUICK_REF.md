@@ -221,6 +221,41 @@ await api.sendMessage(teamName, {
 const settings = await api.getSettings();
 ```
 
+## 图标使用规范
+
+**⚠️ 重要：本项目禁止使用 emoji 作为图标，必须使用 Lucide 图标库**
+
+### Icon 组件
+```tsx
+import { Icon } from './Icon';
+
+// 基本用法（Icon 组件会自动添加 lucide: 前缀）
+<Icon icon="check-circle" size={16} />
+
+// 常用图标（只传图标名称，不带 lucide: 前缀）
+<Icon icon="check-circle" />   // 完成
+<Icon icon="clock" />          // 等待/时间
+<Icon icon="loader-2" />       // 加载中/进行中
+<Icon icon="x" />              // 关闭
+<Icon icon="trash-2" />        // 删除
+<Icon icon="ban" />            // 禁止/阻塞
+<Icon icon="clipboard-list" /> // 任务列表
+<Icon icon="refresh-cw" />     // 刷新
+<Icon icon="plus" />           // 添加
+<Icon icon="settings" />       // 设置
+```
+
+### 状态图标映射
+| 状态 | 图标名称 | 颜色 |
+|------|----------|------|
+| pending | `clock` | gray-500 |
+| in_progress | `loader-2` | blue-500 |
+| completed | `check-circle` | green-500 |
+| deleted | `trash-2` | red-400 |
+| blocked | `ban` | red-500 |
+
+**参考**: https://icon-sets.iconify.design/lucide/
+
 ## 常见问题解决
 
 ### 状态更新不触发重渲染

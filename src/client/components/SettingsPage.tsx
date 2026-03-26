@@ -313,7 +313,11 @@ export function SettingsPage({ pendingConfigRestart, pendingChanges, onRestartCo
 
         {activeTab === 'logging' && (
           <div className="max-w-lg">
-            <LogConfigPanel />
+            <LogConfigPanel
+              onChange={(newLogConfig) => {
+                setConfig(prev => ({ ...prev, logConfig: newLogConfig }));
+              }}
+            />
           </div>
         )}
       </div>

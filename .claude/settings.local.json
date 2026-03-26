@@ -73,7 +73,23 @@
       "Bash(bash /root/claude-chat/scripts/start.sh)",
       "Bash(claude mcp:*)",
       "Bash(npm root:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git remote:*)",
+      "Bash(openspec/changes/structured-logging/specs/structured-logging/spec.md:*)",
+      "Bash(openspec/changes/structured-logging/specs/log-rotation/spec.md:*)",
+      "Bash(openspec/changes/structured-logging/specs/log-analysis/spec.md:*)",
+      "Bash(cd plugins:*)",
+      "Bash(cp:*)",
+      "Bash(claude plugin:*)",
+      "Bash(find /root/claude-chat -maxdepth 3 -type d \\\\\\(-name .claude* -o -name hooks -o -name scripts -o -name plugin* \\\\\\))",
+      "Bash(mv /root/claude-chat/scripts/plugin/session-start.js /root/claude-chat/hooks/session-start.js)",
+      "Bash(mv /root/claude-chat/scripts/plugin/task-created.js /root/claude-chat/hooks/task-created.js)",
+      "Bash(claude hooks:*)",
+      "Bash(mkdir -p openspec/changes/archive)",
+      "Bash(mv openspec/changes/task-created-hook openspec/changes/archive/2026-03-26-task-created-hook)",
+      "Bash(git reset:*)",
+      "Bash(git restore:*)",
+      "Bash(git check-ignore:*)"
     ]
   },
   "hooks": {
@@ -95,6 +111,10 @@
           {
             "type": "command",
             "command": "node /root/claude-chat/.claude/hooks/session-start.js"
+          },
+          {
+            "type": "command",
+            "command": "node /root/claude-chat/hooks/session-start.js"
           }
         ]
       }

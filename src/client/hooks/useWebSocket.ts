@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'preact/hooks';
-import type { Message, ConfigChange, MemberStatusInfo } from '@shared/types';
+import type { Message, ConfigChange, MemberStatusInfo, Task } from '@shared/types';
 import { initBackendPort, getBackendPort } from '../utils/api';
 
 export interface WebSocketMessage {
@@ -17,6 +17,7 @@ export interface WebSocketMessage {
   oldInstance?: string | null;
   newInstance?: string;
   sourceProject?: string;
+  task?: Task;
 }
 
 export function useWebSocket() {
@@ -141,6 +142,15 @@ export function useWebSocket() {
               type: data.type,
               newPort: data.newPort,
               newHost: data.newHost
+            });
+          }
+
+          if (data.type === 'task_created' && data.task) {
+            setLastMessage({
+              timestamp: Date.now(),
+              type: data.type,
+              team: data.team,
+              task: data.task
             });
           }
         } catch (err) {

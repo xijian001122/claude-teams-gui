@@ -4,6 +4,7 @@ import { api } from '../utils/api';
 
 interface TaskPanelProps {
   currentTeam: string | null;
+  tasks?: Task[]; // External tasks from WebSocket
 }
 
 type ViewMode = 'current' | 'global';
@@ -263,7 +264,7 @@ interface TaskCounts {
   deleted: number;
 }
 
-export function TaskPanel({ currentTeam }: TaskPanelProps) {
+export function TaskPanel({ currentTeam, tasks: externalTasks }: TaskPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [tasks, setTasks] = useState<Array<Task & { teamName?: string }>>([]);
   const [loading, setLoading] = useState(false);
@@ -313,6 +314,24 @@ export function TaskPanel({ currentTeam }: TaskPanelProps) {
       loadTasks();
     }
   }, [loadTasks, isOpen]);
+
+  // Merge external tasks (from WebSocket) with local tasks
+  useEffect(() => {
+    if (!externalTasks || externalTasks.length === 0) return;
+
+    setTasks(prev => {
+      // Create a map of existing tasks for deduplication
+      const existingTasks = new Map(prev.map(t => [t.id, t]));
+
+      // Merge external tasks
+      externalTasks.forEach(task => {
+        const taskWithTeam = { ...task, teamName: currentTeam || undefined };
+        existingTasks.set(task.id, taskWithTeam);
+      });
+
+      return Array.from(existingTasks.values());
+    });
+  }, [externalTasks, currentTeam]);
 
   // Reset view mode when team changes
   useEffect(() => {

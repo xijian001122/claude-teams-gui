@@ -47,9 +47,8 @@ export default defineConfig({
   root: 'src/client',
   plugins: [backendPortPlugin()],
   esbuild: {
-    jsxFactory: 'h',
-    jsxFragment: 'Fragment',
-    jsxInject: `import { h, Fragment } from 'preact'`
+    jsx: 'automatic',
+    jsxImportSource: 'preact'
   },
   resolve: {
     alias: {

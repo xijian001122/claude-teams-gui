@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务列表面板 - 设计方案对比</title>
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <style>
+        /* 基础重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* Iconify 图标样式 */
+        .iconify {
+            display: inline-block;
+            vertical-align: middle;
+            width: 1em;
+            height: 1em;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #1a1a1a;
+            font-size: 32px;
+        }
+
+        /* 导航 */
+        .toc {
+            background: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .toc a {
+            color: #0066ff;
+            text-decoration: none;
+            margin: 0 12px;
+            font-weight: 500;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        /* 设计卡片 */
+        .design-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .design-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .design-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .design-badge.recommended {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .design-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .design-desc {
+            color: #666;
+            margin-bottom: 24px;
+            font-size: 15px;
+        }
+
+        /* 模拟 UI */
+        .mock-container {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #f8f9fa;
+        }
+
+        .mock-header {
+            background: #2d3748;
+            color: white;
+            padding: 12px 16px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mock-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .mock-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .mock-dot.red { background: #ff5f57; }
+        .mock-dot.yellow { background: #febc2e; }
+        .mock-dot.green { background: #28c840; }
+
+        /* 主布局 */
+        .mock-layout {
+            display: flex;
+            height: 500px;
+        }
+
+        .mock-sidebar {
+            width: 280px;
+            background: #1a202c;
+            color: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mock-sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid #2d3748;
+            font-weight: 600;
+        }
+
+        .mock-team-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .mock-team-item {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .mock-team-item:hover {
+            background: #2d3748;
+        }
+
+        .mock-team-item.active {
+            background: #3182ce;
+        }
+
+        .mock-team-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .mock-team-name {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .mock-online-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #48bb78;
+        }
+
+        /* 方案1: 可折叠面板 */
+        .mock-task-panel-collapsible {
+            border-top: 1px solid #2d3748;
+            background: #171923;
+        }
+
+        .mock-task-panel-header {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            background: #2d3748;
+        }
+
+        .mock-task-panel-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .mock-task-toggle {
+            font-size: 12px;
+            transition: transform 0.2s;
+        }
+
+        .mock-task-panel-collapsible.expanded .mock-task-toggle {
+            transform: rotate(180deg);
+        }
+
+        .mock-task-list-collapsible {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        /* 方案2: Tab 页 */
+        .mock-tabs {
+            display: flex;
+            border-bottom: 1px solid #2d3748;
+        }
+
+        .mock-tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: #a0aec0;
+        }
+
+        .mock-tab:hover {
+            background: #2d3748;
+        }
+
+        .mock-tab.active {
+            background: #3182ce;
+            color: white;
+        }
+
+        .mock-tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        /* 方案3: 悬浮按钮 */
+        .mock-fab {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .mock-fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .mock-drawer {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            width: 320px;
+            max-height: 400px;
+            background: #1a202c;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+            display: none;
+        }
+
+        .mock-drawer.show {
+            display: block;
+        }
+
+        .mock-drawer-header {
+            padding: 16px;
+            background: #2d3748;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .mock-drawer-close {
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .mock-drawer-close:hover {
+            opacity: 1;
+        }
+
+        /* 主聊天区 */
+        .mock-main {
+            flex: 1;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .mock-chat-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mock-chat-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .mock-chat-subtitle {
+            color: #718096;
+            font-size: 13px;
+        }
+
+        .mock-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f7fafc;
+        }
+
+        .mock-message {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .mock-message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .mock-message-content {
+            flex: 1;
+        }
+
+        .mock-message-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .mock-message-author {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .mock-message-time {
+            color: #a0aec0;
+            font-size: 12px;
+        }
+
+        .mock-message-text {
+            background: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            font-size: 14px;
+        }
+
+        /* 任务列表样式 */
+        .task-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .task-table th {
+            text-align: left;
+            padding: 10px 12px;
+            background: #2d3748;
+            font-weight: 600;
+            color: #a0aec0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .task-table td {
+            padding: 12px;
+            border-bottom: 1px solid #2d3748;
+        }
+
+        .task-table tr:hover td {
+            background: #2d3748;
+        }
+
+        .task-id {
+            font-family: monospace;
+            color: #63b3ed;
+            font-size: 12px;
+        }
+
+        .task-name {
+            font-weight: 500;
+        }
+
+        .task-owner {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .owner-avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .status-completed {
+            background: rgba(72, 187, 120, 0.2);
+            color: #48bb78;
+        }
+
+        .status-in-progress {
+            background: rgba(66, 153, 225, 0.2);
+            color: #4299e1;
+        }
+
+        .status-pending {
+            background: rgba(160, 174, 192, 0.2);
+            color: #a0aec0;
+        }
+
+        .status-blocked {
+            background: rgba(245, 101, 101, 0.2);
+            color: #f56565;
+        }
+
+        .blocked-by {
+            font-size: 11px;
+            color: #f56565;
+        }
+
+        /* 对比表格 */
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .compare-table th {
+            text-align: left;
+            padding: 16px;
+            background: #f7fafc;
+            font-weight: 600;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .compare-table td {
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: top;
+        }
+
+        .compare-table tr:hover td {
+            background: #f7fafc;
+        }
+
+        .pros-cons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .pros-cons-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .pros-cons-item .icon {
+            font-size: 14px;
+        }
+
+        .pros-cons-item.pro .icon {
+            color: #48bb78;
+        }
+
+        .pros-cons-item.con .icon {
+            color: #f56565;
+        }
+
+        /* 推荐标记 */
+        .recommendation {
+            background: linear-gradient(135deg, rgba(17, 153, 142, 0.1) 0%, rgba(56, 239, 125, 0.1) 100%);
+            border: 2px solid #11998e;
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 30px;
+        }
+
+        .recommendation-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #11998e;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .recommendation-reason {
+            color: #4a5568;
+            line-height: 1.8;
+        }
+
+        /* 交互提示 */
+        .interaction-hint {
+            background: #ebf8ff;
+            border-left: 4px solid #3182ce;
+            padding: 12px 16px;
+            margin: 16px 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 13px;
+            color: #2c5282;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .mock-layout {
+                flex-direction: column;
+            }
+
+            .mock-sidebar {
+                width: 100%;
+                max-height: 200px;
+            }
+
+            .task-table {
+                font-size: 12px;
+            }
+
+            .task-table th,
+            .task-table td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>任务列表面板 - 设计方案对比</h1>
+
+        <!-- 导航 -->
+        <nav class="toc">
+            <a href="#方案1">方案1: 可折叠面板</a> |
+            <a href="#方案2">方案2: Tab 页</a> |
+            <a href="#方案3">方案3: 悬浮抽屉</a> |
+            <a href="#对比">方案对比</a>
+        </nav>
+
+        <!-- 方案1: 可折叠面板 -->
+        <section id="方案1" class="design-card">
+            <div class="design-header">
+                <span class="design-badge">方案 1</span>
+                <h2 class="design-title">可折叠面板</h2>
+            </div>
+            <p class="design-desc">
+                Sidebar 底部放置可折叠的任务面板，点击面板头部可展开/收起。适合需要常驻显示但不想占用太多空间的场景。
+            </p>
+            <div class="interaction-hint">
+                💡 点击任务面板头部可展开/收起，默认展开显示最多 5 个任务
+            </div>
+
+            <div class="mock-container">
+                <div class="mock-header">
+                    <div class="mock-dots">
+                        <div class="mock-dot red"></div>
+                        <div class="mock-dot yellow"></div>
+                        <div class="mock-dot green"></div>
+                    </div>
+                    <span>Claude Chat - 方案1 演示</span>
+                </div>
+                <div class="mock-layout">
+                    <div class="mock-sidebar">
+                        <div class="mock-sidebar-header">团队列表</div>
+                        <div class="mock-team-list">
+                            <div class="mock-team-item active">
+                                <div class="mock-team-avatar">CL</div>
+                                <div class="mock-team-name">claude-teams</div>
+                                <div class="mock-online-dot"></div>
+                            </div>
+                            <div class="mock-team-item">
+                                <div class="mock-team-avatar" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">PR</div>
+                                <div class="mock-team-name">project-alpha</div>
+                                <div class="mock-online-dot"></div>
+                            </div>
+                            <div class="mock-team-item">
+                                <div class="mock-team-avatar" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">DE</div>
+                                <div class="mock-team-name">design-team</div>
+                            </div>
+                        </div>
+
+                        <!-- 可折叠任务面板 -->
+                        <div class="mock-task-panel-collapsible expanded">
+                            <div class="mock-task-panel-header">
+                                <div class="mock-task-panel-title">
+                                    <span class="iconify" data-icon="lucide:clipboard-list"></span> 任务列表 (4)
+                                </div>
+                                <div class="mock-task-toggle">▼</div>
+                            </div>
+                            <div class="mock-task-list-collapsible">
+                                <table class="task-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>任务</th>
+                                            <th>负责人</th>
+                                            <th>状态</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="task-id">#1</td>
+                                            <td class="task-name">添加登录功能</td>
+                                            <td class="task-owner">
+                                                <div class="owner-avatar">A</div>
+                                                <span>Alice</span>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge status-completed"><span class="iconify" data-icon="lucide:check-circle"></span> completed</span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="task-id">#2</td>
+                                            <td class="task-name">设计首页布局</td>
+                                            <td class="task-owner">
+                                                <div class="owner-avatar">B</div>
+                                                <span>Bob</span>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge status-in-progress"><span class="iconify" data-icon="lucide:loader-2"></span> in_progress</span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="task-id">#3</td>
+                                            <td class="task-name">编写API文档</td>
+                                            <td class="task-owner">
+                                                <div class="owner-avatar">C</div>
+                                                <span>Carol</span>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge status-pending"><span class="iconify" data-icon="lucide:clock"></span> pending</span>
+                                                <div class="blocked-by"><span class="iconify" data-icon="lucide:ban"></span> blocked by #2</div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="task-id">#4</td>
+                                            <td class="task-name">性能优化</td>
+                                            <td class="task-owner">
+                                                <div class="owner-avatar">D</div>
+                                                <span>David</span>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge status-blocked"><span class="iconify" data-icon="lucide:ban"></span> blocked</span>
+                                                <div class="blocked-by"><span class="iconify" data-icon="lucide:ban"></span> blocked by #1</div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mock-main">
+                        <div class="mock-chat-header">
+                            <div class="mock-chat-title">claude-teams</div>
+                            <div class="mock-chat-subtitle">3 名成员在线</div>
+                        </div>
+                        <div class="mock-messages">
+                            <div class="mock-message">
+                                <div class="mock-message-avatar">A</div>
+                                <div class="mock-message-content">
+                                    <div class="mock-message-header">
+                                        <span class="mock-message-author">Alice</span>
+                                        <span class="mock-message-time">10:30</span>
+                                    </div>
+                                    <div class="mock-message-text">登录功能已经完成，大家可以测试一下</div>
+                                </div>
+                            </div>
+                            <div class="mock-message">
+                                <div class="mock-message-avatar" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">B</div>
+                                <div class="mock-message-content">
+                                    <div class="mock-message-header">
+                                        <span class="mock-message-author">Bob</span>
+                                        <span class="mock-message-time">10:32</span>
+                                    </div>
+                                    <div class="mock-message-text">收到，正在设计首页布局</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 方案2: Tab 页 -->
+        <section id="方案2" class="design-card">
+            <div class="design-header">
+                <span class="design-badge recommended">方案 2</span>
+                <h2 class="design-title">Tab 页切换</h2>
+            </div>
+            <p class="design-desc">
+                Sidebar 内容区域使用 Tab 切换团队列表和任务列表。充分利用现有空间，界面简洁清晰。
+            </p>
+            <div class="interaction-hint">
+                💡 点击 Tab 切换「团队」和「任务」两个视图，任务 Tab 显示完整任务信息
+            </div>
+
+            <div class="mock-container">
+                <div class="mock-header">
+                    <div class="mock-dots">
+                        <div class="mock-dot red"></div>
+                        <div class="mock-dot yellow"></div>
+                        <div class="mock-dot green"></div>
+                    </div>
+                    <span>Claude Chat - 方案2 演示</span>
+                </div>
+                <div class="mock-layout">
+                    <div class="mock-sidebar">
+                        <div class="mock-sidebar-header">团队列表</div>
+
+                        <!-- Tab 切换 -->
+                        <div class="mock-tabs">
+                            <div class="mock-tab active">团队</div>
+                            <div class="mock-tab">任务</div>
+                        </div>
+
+                        <!-- 团队列表内容 -->
+                        <div class="mock-tab-content">
+                            <div class="mock-team-item active">
+                                <div class="mock-team-avatar">CL</div>
+                                <div class="mock-team-name">claude-teams</div>
+                                <div class="mock-online-dot"></div>
+                            </div>
+                            <div class="mock-team-item">
+                                <div class="mock-team-avatar" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">PR</div>
+                                <div class="mock-team-name">project-alpha</div>
+                                <div class="mock-online-dot"></div>
+                            </div>
+                            <div class="mock-team-item">
+                                <div class="mock-team-avatar" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">DE</div>
+                                <div class="mock-team-name">design-team</div>
+                            </div>
+
+                            <!-- 任务列表（Tab 视图） -->
+                            <div style="margin-top: 20px; border-top: 1px solid #2d3748; padding-top: 16px;">
+                                <div style="font-size: 12px; color: #a0aec0; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">当前团队任务</div>
+                                <table class="task-table">
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <div class="task-name">添加登录功能</div>
+                                                <div style="font-size: 11px; color: #a0aec0; margin-top: 2px;">Alice</div>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge status-completed"><span class="iconify" data-icon="lucide:check-circle"></span></span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="task-name">设计首页布局</div>
+                                                <div style="font-size: 11px; color: #a0aec0; margin-top: 2px;">Bob</div>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge status-in-progress"><span class="iconify" data-icon="lucide:loader-2"></span></span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="task-name">编写API文档</div>
+                                                <div style="font-size: 11px; color: #a0aec0; margin-top: 2px;">Carol</div>
+                                                <div class="blocked-by"><span class="iconify" data-icon="lucide:ban"></span> #2</div>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge status-pending"><span class="iconify" data-icon="lucide:clock"></span></span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="task-name">性能优化</div>
+                                                <div style="font-size: 11px; color: #a0aec0; margin-top: 2px;">David</div>
+                                                <div class="blocked-by"><span class="iconify" data-icon="lucide:ban"></span> #1</div>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge status-blocked"><span class="iconify" data-icon="lucide:ban"></span></span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mock-main">
+                        <div class="mock-chat-header">
+                            <div class="mock-chat-title">claude-teams</div>
+                            <div class="mock-chat-subtitle">3 名成员在线</div>
+                        </div>
+                        <div class="mock-messages">
+                            <div class="mock-message">
+                                <div class="mock-message-avatar">A</div>
+                                <div class="mock-message-content">
+                                    <div class="mock-message-header">
+                                        <span class="mock-message-author">Alice</span>
+                                        <span class="mock-message-time">10:30</span>
+                                    </div>
+                                    <div class="mock-message-text">Tab 切换的设计很直观，用户可以清晰看到两个视图</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 方案3: 悬浮抽屉 -->
+        <section id="方案3" class="design-card">
+            <div class="design-header">
+                <span class="design-badge">方案 3</span>
+                <h2 class="design-title">悬浮抽屉</h2>
+            </div>
+            <p class="design-desc">
+                右下角悬浮按钮触发任务列表抽屉。最小化干扰，适合偶尔查看任务的场景。
+            </p>
+            <div class="interaction-hint">
+                💡 点击右下角悬浮按钮打开任务抽屉，再次点击或点击外部关闭
+            </div>
+
+            <div class="mock-container">
+                <div class="mock-header">
+                    <div class="mock-dots">
+                        <div class="mock-dot red"></div>
+                        <div class="mock-dot yellow"></div>
+                        <div class="mock-dot green"></div>
+                    </div>
+                    <span>Claude Chat - 方案3 演示</span>
+                </div>
+                <div class="mock-layout">
+                    <div class="mock-sidebar">
+                        <div class="mock-sidebar-header">团队列表</div>
+                        <div class="mock-team-list">
+                            <div class="mock-team-item active">
+                                <div class="mock-team-avatar">CL</div>
+                                <div class="mock-team-name">claude-teams</div>
+                                <div class="mock-online-dot"></div>
+                            </div>
+                            <div class="mock-team-item">
+                                <div class="mock-team-avatar" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">PR</div>
+                                <div class="mock-team-name">project-alpha</div>
+                                <div class="mock-online-dot"></div>
+                            </div>
+                            <div class="mock-team-item">
+                                <div class="mock-team-avatar" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">DE</div>
+                                <div class="mock-team-name">design-team</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mock-main">
+                        <div class="mock-chat-header">
+                            <div class="mock-chat-title">claude-teams</div>
+                            <div class="mock-chat-subtitle">3 名成员在线</div>
+                        </div>
+                        <div class="mock-messages">
+                            <div class="mock-message">
+                                <div class="mock-message-avatar">A</div>
+                                <div class="mock-message-content">
+                                    <div class="mock-message-header">
+                                        <span class="mock-message-author">Alice</span>
+                                        <span class="mock-message-time">10:30</span>
+                                    </div>
+                                    <div class="mock-message-text">悬浮按钮的设计让界面保持简洁</div>
+                                </div>
+                            </div>
+                            <div class="mock-message">
+                                <div class="mock-message-avatar" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">B</div>
+                                <div class="mock-message-content">
+                                    <div class="mock-message-header">
+                                        <span class="mock-message-author">Bob</span>
+                                        <span class="mock-message-time">10:32</span>
+                                    </div>
+                                    <div class="mock-message-text">需要查看任务时点击右下角按钮即可</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 悬浮按钮 -->
+                        <div class="mock-fab"><span class="iconify" data-icon="lucide:clipboard-list"></span></div>
+
+                        <!-- 抽屉 -->
+                        <div class="mock-drawer show">
+                            <div class="mock-drawer-header">
+                                <span><span class="iconify" data-icon="lucide:clipboard-list"></span> 任务列表</span>
+                                <span class="mock-drawer-close"><span class="iconify" data-icon="lucide:x"></span></span>
+                            </div>
+                            <div style="max-height: 300px; overflow-y: auto; padding: 12px;">
+                                <table class="task-table">
+                                    <thead>
+                                        <tr>
+                                            <th>任务</th>
+                                            <th>状态</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <div class="task-name">添加登录功能</div>
+                                                <div style="font-size: 11px; color: #a0aec0; margin-top: 2px;">Alice</div>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge status-completed"><span class="iconify" data-icon="lucide:check-circle"></span></span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="task-name">设计首页布局</div>
+                                                <div style="font-size: 11px; color: #a0aec0; margin-top: 2px;">Bob</div>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge status-in-progress"><span class="iconify" data-icon="lucide:loader-2"></span></span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="task-name">编写API文档</div>
+                                                <div style="font-size: 11px; color: #a0aec0; margin-top: 2px;">Carol</div>
+                                                <div class="blocked-by"><span class="iconify" data-icon="lucide:ban"></span> #2</div>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge status-pending"><span class="iconify" data-icon="lucide:clock"></span></span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="task-name">性能优化</div>
+                                                <div style="font-size: 11px; color: #a0aec0; margin-top: 2px;">David</div>
+                                                <div class="blocked-by"><span class="iconify" data-icon="lucide:ban"></span> #1</div>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge status-blocked"><span class="iconify" data-icon="lucide:ban"></span></span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 方案对比 -->
+        <section id="对比" class="design-card">
+            <h2 style="margin-bottom: 20px;">方案对比分析</h2>
+
+            <table class="compare-table">
+                <thead>
+                    <tr>
+                        <th>方案</th>
+                        <th>优点</th>
+                        <th>缺点</th>
+                        <th>适用场景</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>方案1: 可折叠面板</strong></td>
+                        <td>
+                            <div class="pros-cons">
+                                <div class="pros-cons-item pro">
+                                    <span class="icon">✓</span>
+                                    <span>常驻显示任务数量</span>
+                                </div>
+                                <div class="pros-cons-item pro">
+                                    <span class="icon">✓</span>
+                                    <span>可快速展开查看</span>
+                                </div>
+                                <div class="pros-cons-item pro">
+                                    <span class="icon">✓</span>
+                                    <span>不离开当前团队视图</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="pros-cons">
+                                <div class="pros-cons-item con">
+                                    <span class="icon">✗</span>
+                                    <span>占用 Sidebar 底部空间</span>
+                                </div>
+                                <div class="pros-cons-item con">
+                                    <span class="icon">✗</span>
+                                    <span>团队列表可能被挤压</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>任务较多且需要频繁查看的团队</td>
+                    </tr>
+                    <tr>
+                        <td><strong>方案2: Tab 页切换</strong></td>
+                        <td>
+                            <div class="pros-cons">
+                                <div class="pros-cons-item pro">
+                                    <span class="icon">✓</span>
+                                    <span>界面简洁清晰</span>
+                                </div>
+                                <div class="pros-cons-item pro">
+                                    <span class="icon">✓</span>
+                                    <span>充分利用 Sidebar 空间</span>
+                                </div>
+                                <div class="pros-cons-item pro">
+                                    <span class="icon">✓</span>
+                                    <span>任务列表展示面积大</span>
+                                </div>
+                                <div class="pros-cons-item pro">
+                                    <span class="icon">✓</span>
+                                    <span>符合用户习惯</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="pros-cons">
+                                <div class="pros-cons-item con">
+                                    <span class="icon">✗</span>
+                                    <span>需要切换查看团队</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>任务与团队同等重要的场景</td>
+                    </tr>
+                    <tr>
+                        <td><strong>方案3: 悬浮抽屉</strong></td>
+                        <td>
+                            <div class="pros-cons">
+                                <div class="pros-cons-item pro">
+                                    <span class="icon">✓</span>
+                                    <span>最小化界面干扰</span>
+                                </div>
+                                <div class="pros-cons-item pro">
+                                    <span class="icon">✓</span>
+                                    <span>随时可以打开</span>
+                                </div>
+                                <div class="pros-cons-item pro">
+                                    <span class="icon">✓</span>
+                                    <span>不占用 Sidebar 空间</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="pros-cons">
+                                <div class="pros-cons-item con">
+                                    <span class="icon">✗</span>
+                                    <span>需要额外点击打开</span>
+                                </div>
+                                <div class="pros-cons-item con">
+                                    <span class="icon">✗</span>
+                                    <span>可能遮挡聊天内容</span>
+                                </div>
+                                <div class="pros-cons-item con">
+                                    <span class="icon">✗</span>
+                                    <span>新任务通知不明显</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>偶尔查看任务的场景</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- 推荐方案 -->
+            <div class="recommendation">
+                <div class="recommendation-title">
+                    <span>⭐</span>
+                    <span>推荐方案：Tab 页切换（方案2）</span>
+                </div>
+                <div class="recommendation-reason">
+                    <p><strong>推荐理由：</strong></p>
+                    <ul style="margin: 12px 0; padding-left: 24px;">
+                        <li>界面最简洁，符合主流 IM 应用（如 Slack、Discord）的设计模式</li>
+                        <li>任务列表展示区域充足，可显示完整的任务信息（ID、名称、负责人、状态、依赖）</li>
+                        <li>用户学习成本低，Tab 切换是普遍认知的交互模式</li>
+                        <li>不占用额外的屏幕空间，Sidebar 区域被充分利用</li>
+                    </ul>
+                    <p><strong>实施建议：</strong></p>
+                    <ul style="margin: 12px 0; padding-left: 24px;">
+                        <li>默认显示「团队」Tab，保持现有用户体验</li>
+                        <li>任务 Tab 添加未读/进行中的任务数量徽章</li>
+                        <li>点击任务可跳转或显示详情</li>
+                        <li>支持键盘快捷键切换 Tab（如 Ctrl+1/2）</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
