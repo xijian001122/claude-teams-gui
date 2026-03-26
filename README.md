@@ -2,6 +2,12 @@
 
 Visual chat interface for Claude Code Teams - a WeChat-like messaging experience for AI agent collaboration.
 
+## Version
+
+Current version: **v0.1.0**
+
+See [CHANGELOG.md](./CHANGELOG.md) for release history.
+
 ## Features
 
 - **Real-time Chat**: WebSocket-based messaging with instant updates
@@ -69,6 +75,28 @@ npm run build
 
 # Run tests
 npm test
+```
+
+## Versioning
+
+This project uses [Semantic Versioning 2.0.0](https://semver.org/) with [Conventional Commits](https://www.conventionalcommits.org/).
+
+### Version Increment Rules
+
+| Commit Type | Version Bump | Example |
+|------------|--------------|---------|
+| `feat:` | minor | 0.1.0 → 0.2.0 |
+| `fix:` | patch | 0.1.0 → 0.1.1 |
+| `BREAKING CHANGE:` | major | 0.1.0 → 1.0.0 |
+
+### Making a Release
+
+```bash
+# Create a new release (auto-bumps version based on commits)
+npm run release
+
+# Push tags to remote
+git push --follow-tags origin <branch>
 ```
 
 ## License

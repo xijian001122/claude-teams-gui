@@ -40,6 +40,35 @@ npm run test:coverage    # Vitest with coverage
 npm start                # Run from dist/server/index.js
 ```
 
+## Version Management
+
+项目使用语义化版本控制 (SemVer) 和 Conventional Commits 规范。
+
+### 版本号规则
+
+| 提交类型 | 版本递增 | 示例 |
+|---------|---------|------|
+| `feat:` | minor +1 | `feat: add new login` → v0.**2**.0 |
+| `fix:` | patch +1 | `fix: resolve bug` → v0.1.**2** |
+| `BREAKING CHANGE:` | major +1 | `feat!: change API` → v**1**.0.0 |
+
+### 发布命令
+
+```bash
+# 标准发布（自动递增版本）
+npm run release
+
+# 首次发布初始化
+npm run release -- --first-release
+
+# 推送标签到远程
+git push --follow-tags origin <branch>
+```
+
+### CHANGELOG.md
+
+每次发布自动更新 `CHANGELOG.md`，记录所有 feat、fix、docs 等类型的提交。
+
 ## Configuration
 
 配置文件位于 `~/.claude-chat/config.json`:
