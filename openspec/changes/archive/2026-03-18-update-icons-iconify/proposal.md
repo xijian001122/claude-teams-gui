@@ -2,7 +2,7 @@
 
 ## What
 
-Replace inline SVGs and text-based icons with icons from the [Iconify](https://icon-sets.iconify.design/) library throughout the Claude Chat application.
+Replace inline SVGs and text-based icons with icons from the [Iconify](https://icon-sets.iconify.design/) library throughout the Claude Agent GUI application.
 
 ## Why
 

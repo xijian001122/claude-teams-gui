@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * TaskCreated Hook for Claude Chat
+ * TaskCreated Hook for Claude Agent GUI
  *
  * This hook is triggered when a task is created via TaskCreate tool.
- * It sends a notification to the Claude Chat backend, which broadcasts
+ * It sends a notification to the Claude Agent GUI backend, which broadcasts
  * the event to all connected WebSocket clients.
  *
  * Environment Variables:

@@ -10,7 +10,7 @@ if [ "$1" = "--first-release" ]; then
 fi
 
 echo "=========================================="
-echo "  Claude Chat Release Script"
+echo "  Claude Agent GUI Release Script"
 echo "=========================================="
 
 # Check for uncommitted changes

@@ -1,6 +1,6 @@
 ## Context
 
-当前 Claude Chat 项目已实现基本的任务列表 UI（TaskPanel 组件），但任务数据来源于内存中的 TaskList API，而非文件系统。这导致：
+当前 Claude Agent GUI 项目已实现基本的任务列表 UI（TaskPanel 组件），但任务数据来源于内存中的 TaskList API，而非文件系统。这导致：
 - 任务无法在 Web UI 中持久展示
 - 无法查看其他团队的任务
 - 无法追踪任务历史变更

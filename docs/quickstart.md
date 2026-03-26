@@ -1,4 +1,4 @@
-# Claude Chat 快速开始
+# Claude Agent GUI 快速开始
 
 ## 安装
 

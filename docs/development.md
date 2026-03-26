@@ -1,4 +1,4 @@
-# Claude Chat 开发文档
+# Claude Agent GUI 开发文档
 
 ## 架构设计
 

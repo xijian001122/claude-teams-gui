@@ -1,8 +1,8 @@
-# Claude Chat 需求文档
+# Claude Agent GUI 需求文档
 
 ## 项目概述
 
-Claude Chat 是一个为 Claude Code Teams 设计的可视化群聊界面，提供类似微信的聊天体验，支持实时消息同步、双向通信、数据持久化和主题切换。
+Claude Agent GUI 是一个为 Claude Code Teams 设计的可视化群聊界面，提供类似微信的聊天体验，支持实时消息同步、双向通信、数据持久化和主题切换。
 
 ---
 

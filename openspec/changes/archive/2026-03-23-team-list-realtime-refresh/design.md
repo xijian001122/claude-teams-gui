@@ -2,7 +2,7 @@
 
 ## Context
 
-This design addresses the real-time team list synchronization issue in Claude Chat. Currently, when Claude creates a new team after the web client has connected, the team does not appear in the sidebar until the application is restarted.
+This design addresses the real-time team list synchronization issue in Claude Agent GUI. Currently, when Claude creates a new team after the web client has connected, the team does not appear in the sidebar until the application is restarted.
 
 ## Goals
 

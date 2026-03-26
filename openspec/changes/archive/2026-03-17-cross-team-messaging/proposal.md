@@ -1,6 +1,6 @@
 ## Why
 
-Currently, Claude Chat only supports communication within a single team. Teams operate in isolation and cannot send messages to each other. Users need the ability for cross-team collaboration - for example, team-load should be able to send messages directly to the developer team. This enables better coordination between different AI agent teams working on related tasks.
+Currently, Claude Agent GUI only supports communication within a single team. Teams operate in isolation and cannot send messages to each other. Users need the ability for cross-team collaboration - for example, team-load should be able to send messages directly to the developer team. This enables better coordination between different AI agent teams working on related tasks.
 
 ## What Changes
 

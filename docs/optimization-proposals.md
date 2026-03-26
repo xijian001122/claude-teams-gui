@@ -1,11 +1,11 @@
-# Claude Chat 优化建议
+# Claude Agent GUI 优化建议
 
 > 基于 Claude Code 2.1.84/2.1.83/2.1.81 更新日志分析
 > 生成日期: 2026-03-26
 
 ## 概述
 
-本文档记录了基于 Claude Code 最新版本功能的优化建议，旨在提升 Claude Chat 项目的用户体验和开发效率。
+本文档记录了基于 Claude Code 最新版本功能的优化建议，旨在提升 Claude Agent GUI 项目的用户体验和开发效率。
 
 ---
 

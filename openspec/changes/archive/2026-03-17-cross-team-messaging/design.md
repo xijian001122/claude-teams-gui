@@ -1,6 +1,6 @@
 ## Context
 
-Claude Chat currently uses a team-isolated architecture where each team's messages are completely separate. The `Message` type already has a `to` field (string | null) that is used for targeting specific members within a team. We need to extend this to support cross-team communication while maintaining backward compatibility.
+Claude Agent GUI currently uses a team-isolated architecture where each team's messages are completely separate. The `Message` type already has a `to` field (string | null) that is used for targeting specific members within a team. We need to extend this to support cross-team communication while maintaining backward compatibility.
 
 Current message flow:
 1. Message is created with `from` (sender) and `to` (optional member target)

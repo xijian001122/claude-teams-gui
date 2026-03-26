@@ -10,7 +10,7 @@
             "timeout": 30
           }
         ],
-        "description": "Auto-start Claude Chat servers on session start"
+        "description": "Auto-start Claude Agent GUI servers on session start"
       }
     ],
     "TaskCreated": [
@@ -22,7 +22,7 @@
             "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/task-created.js"
           }
         ],
-        "description": "Notify Claude Chat when tasks are created"
+        "description": "Notify Claude Agent GUI when tasks are created"
       }
     ]
   }

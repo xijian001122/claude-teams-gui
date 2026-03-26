@@ -1,8 +1,8 @@
-# Claude Chat 技能系统维护指南
+# Claude Agent GUI 技能系统维护指南
 
 ## 概述
 
-本文档描述了 Claude Chat 项目的技能系统架构、维护规范和最佳实践。
+本文档描述了 Claude Agent GUI 项目的技能系统架构、维护规范和最佳实践。
 
 ## 技能清单
 

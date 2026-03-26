@@ -5,7 +5,7 @@ description: WebSocket 通信协议规范 - 定义客户端和服务端之间的
 
 # WebSocket 通信协议
 
-**用途**: 定义 Claude Chat 客户端和服务端之间的实时通信协议
+**用途**: 定义 Claude Agent GUI 客户端和服务端之间的实时通信协议
 
 **触发关键词**: WebSocket、WS、实时通信、消息同步、广播、连接
 

@@ -91,4 +91,4 @@ interface LogConfig {
 
 1. **日志格式**：每行 JSON 还是纯文本？
 2. **启动时清理**：是否在服务启动时清理过期日志？
-3. **多实例**：多个 Claude Chat 实例写入同一文件？
+3. **多实例**：多个 Claude Agent GUI 实例写入同一文件？

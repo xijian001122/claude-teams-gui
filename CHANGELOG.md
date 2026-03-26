@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file. See [standa
 ## [0.1.0] - 2026-03-26
 
 ### Added
-- Claude Chat 核心功能
+- Claude Agent GUI 核心功能
 - WebSocket 实时通信
 - SQLite 数据库消息存储
 - Claude Teams 文件系统同步

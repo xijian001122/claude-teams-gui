@@ -67,7 +67,7 @@ program
 
       console.log(`
 ╔══════════════════════════════════════════════════════════════╗
-║                     Claude Chat v0.1.0                       ║
+║                     Claude Agent GUI v0.1.0                       ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  Data Directory: ${dataDir.padEnd(46)}║
 ║  Teams Path:     ${teamsPath.padEnd(46)}║

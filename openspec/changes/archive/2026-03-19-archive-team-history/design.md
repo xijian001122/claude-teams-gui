@@ -1,6 +1,6 @@
 ## Context
 
-Claude Chat 通过 `FileWatcherService` 监听 `~/.claude/teams/` 目录变化。当 Claude Code 删除团队目录时，`unlinkDir` 事件触发 `DataSyncService.handleTeamDeleted()`，将团队状态更新为 `archived`，并通过 WebSocket 广播 `team_archived` 事件。
+Claude Agent GUI 通过 `FileWatcherService` 监听 `~/.claude/teams/` 目录变化。当 Claude Code 删除团队目录时，`unlinkDir` 事件触发 `DataSyncService.handleTeamDeleted()`，将团队状态更新为 `archived`，并通过 WebSocket 广播 `team_archived` 事件。
 
 **当前状态**：
 - 后端完整实现：数据库持久化（`teams.status = 'archived'`）、`GET /api/archive` API、WebSocket `team_archived` 事件

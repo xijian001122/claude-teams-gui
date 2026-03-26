@@ -1,6 +1,6 @@
 ## Context
 
-Claude Chat 是一个 Web UI 应用，用于查看 Agent Teams 的协作消息。当前任务管理功能只能在终端中通过 TaskList/TaskCreate/TaskUpdate 工具操作，用户无法在 Web UI 中查看任务状态。
+Claude Agent GUI 是一个 Web UI 应用，用于查看 Agent Teams 的协作消息。当前任务管理功能只能在终端中通过 TaskList/TaskCreate/TaskUpdate 工具操作，用户无法在 Web UI 中查看任务状态。
 
 任务数据存储在 `~/.claude/tasks/<team-name>/` 目录下的 JSON 文件中，需要通过后端 API 暴露给前端。
 

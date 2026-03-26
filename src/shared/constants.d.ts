@@ -1,5 +1,5 @@
 /**
- * Shared constants for Claude Chat
+ * Shared constants for Claude Agent GUI
  */
 export declare const DEFAULT_CONFIG: {
     port: number;

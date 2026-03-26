@@ -35,7 +35,7 @@ const instructions = `
 ### 步骤 1 - 评估
 针对以下每个技能，严格陈述：[技能名] - 是/否 - [理由]
 
-**Claude Chat 项目技能列表**（共13个）：
+**Claude Agent GUI 项目技能列表**（共13个）：
 
 **开发技能**：
 - **frontend-dev**: 前端开发、Preact组件、TailwindCSS样式、UI交互、状态管理

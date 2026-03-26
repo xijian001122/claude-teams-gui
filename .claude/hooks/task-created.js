@@ -3,7 +3,7 @@
 /**
  * Claude Code Hook - TaskCreated
  * 触发时机：任务创建成功时
- * 功能：通知 Claude Chat 后端广播 task_created 事件
+ * 功能：通知 Claude Agent GUI 后端广播 task_created 事件
  */
 
 const http = require('http');

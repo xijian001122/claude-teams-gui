@@ -2,9 +2,9 @@
 
 ### Background
 
-Claude Chat 通过监控 `~/.claude/teams/` 目录来同步 Claude Code 团队的 messages。当 Claude Code 删除并重建同名团队时，存在以下问题：
+Claude Agent GUI 通过监控 `~/.claude/teams/` 目录来同步 Claude Code 团队的 messages。当 Claude Code 删除并重建同名团队时，存在以下问题：
 
-1. **前端状态不刷新**：Claude Chat 前端一直在运行，团队列表和消息状态不会自动更新
+1. **前端状态不刷新**：Claude Agent GUI 前端一直在运行，团队列表和消息状态不会自动更新
 2. **消息混淆**：数据库保留了旧团队的消息，当新团队创建时，新旧消息混在一起显示
 3. **无实例区分**：消息只按 `teamName` 存储，无法区分同一团队的不同生命周期实例
 

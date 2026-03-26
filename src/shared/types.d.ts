@@ -1,5 +1,5 @@
 /**
- * Shared types for Claude Chat
+ * Shared types for Claude Agent GUI
  */
 export type MessageType = 'text' | 'code' | 'markdown' | 'image' | 'file' | 'task' | 'system';
 export type MemberType = 'agent' | 'user' | 'system';

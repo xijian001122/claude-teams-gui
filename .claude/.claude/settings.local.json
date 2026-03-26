@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//root/claude-chat/**)",
+      "Bash(openspec new:*)",
+      "Bash(openspec status:*)",
+      "Bash(openspec instructions:*)",
+      "Bash(cat /root/claude-chat/.commitlintrc*)",
+      "Bash(npm install:*)",
+      "Bash(chmod:*)",
+      "Bash(npm run:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)",
+      "Bash(git pull:*)"
+    ]
+  }
+}

@@ -2,7 +2,7 @@
 
 ## 概述
 
-Claude Chat 使用 Preact hooks 直接管理状态，不依赖外部状态管理库。核心状态集中在 `app.tsx` 中管理。
+Claude Agent GUI 使用 Preact hooks 直接管理状态，不依赖外部状态管理库。核心状态集中在 `app.tsx` 中管理。
 
 ## 全局状态结构
 

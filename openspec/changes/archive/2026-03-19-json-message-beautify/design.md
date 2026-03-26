@@ -1,6 +1,6 @@
 ## Context
 
-当前 Claude Chat 使用 `MessageBubble.tsx` 组件展示消息。对于 JSON 类型的消息（`contentType === 'json'`），当前只是简单转换为文本显示，缺乏结构化呈现。
+当前 Claude Agent GUI 使用 `MessageBubble.tsx` 组件展示消息。对于 JSON 类型的消息（`contentType === 'json'`），当前只是简单转换为文本显示，缺乏结构化呈现。
 
 探索文档位于 `openspec/explore/json-beautify-exploration.md`，效果图位于 `demo/json-beautify-panel.html`。
 

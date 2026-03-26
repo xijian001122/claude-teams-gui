@@ -1,6 +1,6 @@
 ## Context
 
-The Claude Chat server currently uses `spawn()` to restart itself when configuration changes require a restart (port, host). However:
+The Claude Agent GUI server currently uses `spawn()` to restart itself when configuration changes require a restart (port, host). However:
 
 1. **Restart fails in dev mode**: `spawn(node, ['src/server/cli.ts'])` fails because Node can't execute TypeScript directly
 2. **Restart is slow**: Spawning a new process takes seconds

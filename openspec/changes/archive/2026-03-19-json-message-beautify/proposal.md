@@ -1,6 +1,6 @@
 ## Why
 
-当前 Claude Chat 中的 JSON 消息（如 `permission_request`、`task_assignment`）以纯文本形式展示，缺乏结构化呈现和视觉层级，难以快速识别关键信息。纯展示方案将消息卡片化，提升可读性和信息获取效率，无需后端改动即可实施。
+当前 Claude Agent GUI 中的 JSON 消息（如 `permission_request`、`task_assignment`）以纯文本形式展示，缺乏结构化呈现和视觉层级，难以快速识别关键信息。纯展示方案将消息卡片化，提升可读性和信息获取效率，无需后端改动即可实施。
 
 ## What Changes
 

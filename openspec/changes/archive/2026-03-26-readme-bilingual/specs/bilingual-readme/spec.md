@@ -12,14 +12,14 @@ The README SHALL include a "项目背景" (Project Background) section explainin
 
 #### Scenario: Background section exists
 - **WHEN** new user views the README
-- **THEN** there SHALL be a section describing why Claude Chat was created and what problems it solves
+- **THEN** there SHALL be a section describing why Claude Agent GUI was created and what problems it solves
 
 ### Requirement: Detailed tutorial section
 The README SHALL include step-by-step installation and configuration tutorial.
 
 #### Scenario: Tutorial covers installation
 - **WHEN** user follows the tutorial
-- **THEN** they SHALL be able to install and run Claude Chat successfully
+- **THEN** they SHALL be able to install and run Claude Agent GUI successfully
 
 ### Requirement: FAQ section
 The README SHALL include a Frequently Asked Questions section addressing common setup issues.
@@ -32,5 +32,5 @@ The README SHALL include a Frequently Asked Questions section addressing common 
 The README SHALL document all major features including team management, messaging, and settings.
 
 #### Scenario: Features are documented
-- **WHEN** user wants to understand Claude Chat capabilities
+- **WHEN** user wants to understand Claude Agent GUI capabilities
 - **THEN** the README SHALL list all major features with brief descriptions

@@ -1,7 +1,7 @@
 ## Context
 
 ### 当前状态
-Claude Chat 已实现了 `JsonMessageCard` 组件，用于美化展示 JSON 类型的系统消息（如 `permission_request`、`task_assignment` 等）。当前实现是只读的，用户只能查看权限请求的内容，无法直接在 UI 中进行响应。
+Claude Agent GUI 已实现了 `JsonMessageCard` 组件，用于美化展示 JSON 类型的系统消息（如 `permission_request`、`task_assignment` 等）。当前实现是只读的，用户只能查看权限请求的内容，无法直接在 UI 中进行响应。
 
 权限请求通过 inbox JSON 文件在 team-lead 和 agents 之间传递：
 - `permission_request` → 发送到 team-lead 的 inbox

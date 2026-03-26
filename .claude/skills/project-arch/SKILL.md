@@ -1,11 +1,11 @@
 ---
 name: project-arch
-description: 项目架构规范 - Claude Chat 的整体架构设计、技术选型、目录结构和设计模式。用于理解项目结构、添加新功能、重构代码等。
+description: 项目架构规范 - Claude Agent GUI 的整体架构设计、技术选型、目录结构和设计模式。用于理解项目结构、添加新功能、重构代码等。
 ---
 
 # 项目架构规范
 
-**项目**: Claude Chat - WeChat-like messaging for Claude Code Teams
+**项目**: Claude Agent GUI - WeChat-like messaging for Claude Code Teams
 
 **触发关键词**: 架构、结构、设计、模式、技术栈、目录结构
 

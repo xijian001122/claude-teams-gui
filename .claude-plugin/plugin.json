@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Claude Teams GUI - Auto-start servers and real-time task notifications",
   "author": {
-    "name": "Claude Chat Team"
+    "name": "Claude Agent GUI Team"
   },
   "repository": "https://github.com/claude-chat/notifier-plugin",
   "license": "MIT",

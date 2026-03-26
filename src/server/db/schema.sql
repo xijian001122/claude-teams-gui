@@ -1,4 +1,4 @@
--- Claude Chat Database Schema
+-- Claude Agent GUI Database Schema
 
 -- Messages table
 CREATE TABLE IF NOT EXISTS messages (

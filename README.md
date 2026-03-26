@@ -1,4 +1,4 @@
-# Claude Chat
+# Claude Agent GUI
 
 Visual chat interface for Claude Code Teams - a WeChat-like messaging experience for AI agent collaboration.
 
@@ -8,9 +8,9 @@ Visual chat interface for Claude Code Teams - a WeChat-like messaging experience
 
 ## Project Background
 
-Claude Chat is a visual chat interface for Claude Code Teams, providing a WeChat-like messaging experience for AI agent collaboration.
+Claude Agent GUI is a visual chat interface for Claude Code Teams, providing a WeChat-like messaging experience for AI agent collaboration.
 
-When working with multiple Claude Code Teams simultaneously (e.g., developing several projects or serving different clients), managing inboxes and messages across teams becomes complex. Claude Chat provides a unified interface for real-time viewing and messaging across all teams, with desktop notification support.
+When working with multiple Claude Code Teams simultaneously (e.g., developing several projects or serving different clients), managing inboxes and messages across teams becomes complex. Claude Agent GUI provides a unified interface for real-time viewing and messaging across all teams, with desktop notification support.
 
 ---
 
@@ -111,7 +111,7 @@ Configuration file at `~/.claude-chat/config.json`:
 
 ### Team Management
 
-Claude Chat automatically discovers all teams under `~/.claude/teams/`.
+Claude Agent GUI automatically discovers all teams under `~/.claude/teams/`.
 
 - **Switch teams**: Click team name in left sidebar
 - **View members**: Click member icon next to team name
@@ -197,14 +197,14 @@ Or modify config:
 <details>
 <summary><b>How to view historical messages?</b></summary>
 
-Claude Chat automatically syncs and saves all messages to local database. Scroll in chat area to load historical messages. Archived team messages can be viewed in "Archived" group.
+Claude Agent GUI automatically syncs and saves all messages to local database. Scroll in chat area to load historical messages. Archived team messages can be viewed in "Archived" group.
 
 </details>
 
 <details>
 <summary><b>What is the message sync mechanism?</b></summary>
 
-Claude Chat implements real-time sync by watching `inboxes/*.json` files under `~/.claude/teams/`. When Claude Code sends a message, file changes trigger sync and update the interface.
+Claude Agent GUI implements real-time sync by watching `inboxes/*.json` files under `~/.claude/teams/`. When Claude Code sends a message, file changes trigger sync and update the interface.
 
 </details>
 

@@ -1,6 +1,6 @@
 ## Context
 
-Claude Chat currently uses a mix of:
+Claude Agent GUI currently uses a mix of:
 1. Inline SVG elements (for arrows, send button)
 2. Text symbols (+, A)
 3. CSS-styled divs (connection dot)

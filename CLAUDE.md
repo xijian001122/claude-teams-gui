@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Claude Chat is a visual chat interface for Claude Code Teams - a WeChat-like messaging experience for AI agent collaboration. It provides real-time chat, team management, @ mentions, and desktop notifications.
+Claude Agent GUI is a visual chat interface for Claude Code Teams - a WeChat-like messaging experience for AI agent collaboration. It provides real-time chat, team management, @ mentions, and desktop notifications.
 
 ## Development Commands
 
@@ -98,7 +98,7 @@ git push --follow-tags origin <branch>
 bash scripts/start.sh
 # 输出:
 # ╔══════════════════════════════════════════════════════════════╗
-# ║                Claude Chat 配置                              ║
+# ║                Claude Agent GUI 配置                              ║
 # ╠══════════════════════════════════════════════════════════════╣
 # ║  后端端口: 4558                                              ║
 # ║  前端端口: 4559                                              ║

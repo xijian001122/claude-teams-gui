@@ -1,6 +1,6 @@
 ## Context
 
-当前 Claude Chat 的任务系统使用文件系统存储任务（`~/.claude/tasks/<team-name>/`），前端需要轮询或手动刷新才能获取最新任务状态。Claude Code 2.1.84 新增了 `TaskCreated hook`，可以在任务创建时触发自定义脚本。
+当前 Claude Agent GUI 的任务系统使用文件系统存储任务（`~/.claude/tasks/<team-name>/`），前端需要轮询或手动刷新才能获取最新任务状态。Claude Code 2.1.84 新增了 `TaskCreated hook`，可以在任务创建时触发自定义脚本。
 
 **技术约束**:
 - 后端使用 Fastify + WebSocket
@@ -26,7 +26,7 @@
 **决定**: 使用 HTTP POST 调用后端 API
 
 **理由**:
-- Hook 脚本独立于 Claude Chat 后端进程
+- Hook 脚本独立于 Claude Agent GUI 后端进程
 - HTTP 调用简单可靠，便于调试
 - 可复用现有的 API 基础设施
 
@@ -56,7 +56,7 @@
 
 ```
 ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
-│  Claude Code    │      │  Claude Chat    │      │   Browser UI    │
+│  Claude Code    │      │  Claude Agent GUI    │      │   Browser UI    │
 │  TaskCreate     │      │    Backend      │      │   (Preact)      │
 └────────┬────────┘      └────────┬────────┘      └────────┬────────┘
          │                        │                        │

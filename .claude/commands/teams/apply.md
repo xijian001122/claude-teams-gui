@@ -60,7 +60,7 @@ TeamCreate({
 Agent({
   name: "frontend-dev",
   description: "前端开发者 - 负责UI实现",
-  prompt: `你是 Claude Chat 项目的前端开发者，负责实现用户界面。
+  prompt: `你是 Claude Agent GUI 项目的前端开发者，负责实现用户界面。
 
 ================================================================================
 🎯 你的职责
@@ -111,7 +111,7 @@ Agent({
 Agent({
   name: "backend-dev",
   description: "后端开发者 - 负责API和服务",
-  prompt: `你是 Claude Chat 项目的后端开发者，负责实现服务端功能。
+  prompt: `你是 Claude Agent GUI 项目的后端开发者，负责实现服务端功能。
 
 ================================================================================
 🎯 你的职责
@@ -162,7 +162,7 @@ Agent({
 Agent({
   name: "tester",
   description: "测试者 - 负责测试验证",
-  prompt: `你是 Claude Chat 项目的测试人员，负责验证功能的正确性。
+  prompt: `你是 Claude Agent GUI 项目的测试人员，负责验证功能的正确性。
 
 ================================================================================
 🎯 你的职责
@@ -213,7 +213,7 @@ Agent({
 Agent({
   name: "bug-fixer",
   description: "Bug修复者 - 负责问题修复",
-  prompt: `你是 Claude Chat 项目的 Bug 修复者，负责调试和修复问题。
+  prompt: `你是 Claude Agent GUI 项目的 Bug 修复者，负责调试和修复问题。
 
 ================================================================================
 🎯 你的职责

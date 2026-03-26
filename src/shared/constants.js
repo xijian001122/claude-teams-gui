@@ -1,5 +1,5 @@
 /**
- * Shared constants for Claude Chat
+ * Shared constants for Claude Agent GUI
  */
 // Default configuration
 export const DEFAULT_CONFIG = {
