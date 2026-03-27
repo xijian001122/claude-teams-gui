@@ -285,7 +285,14 @@ export async function createServer(options: ServerOptions) {
   });
 
   // Serve static files (frontend build)
-  const clientDistPath = join(__dirname, '../../client/dist');
+  // Support both development mode and plugin mode
+  const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
+  const clientDistPath = pluginRoot
+    ? join(pluginRoot, 'dist', 'client')
+    : join(__dirname, '../../dist/client');
+
+  console.log(`[Server] Serving frontend from ${clientDistPath}${pluginMode ? 'plugin' : 'development'});
+
   if (existsSync(clientDistPath)) {
     fastify.register(staticPlugin, {
       root: clientDistPath,

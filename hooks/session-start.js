@@ -1,20 +1,55 @@
 #!/usr/bin/env node
 /**
- * SessionStart Hook for Claude Agent Teams UI
+ * SessionStart Hook for Claude Teams GUI
  *
  * This hook is triggered when a Claude Code session starts.
- * It automatically starts the Claude Agent Teams UI backend and frontend servers
- * if they are not already running.
+ * It automatically starts the Claude Teams GUI backend server if not already running.
  *
  * Output format: JSON with systemMessage to display in Claude Code conversation
  */
 
-const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || process.cwd();
+const IS_WINDOWS = process.platform === 'win32';
 const BACKEND_URL = process.env.CLAUDE_CHAT_URL || 'http://localhost:4558';
 const AUTO_START = process.env.CLAUDE_CHAT_AUTO_START !== 'false';
-const STARTUP_TIMEOUT = 30000; // 30 seconds
+const STARTUP_TIMEOUT = 30000;
 
 const { spawn } = require('child_process');
+const { existsSync } = require('fs');
+const { join, dirname, resolve } from 'path');
+const { homedir } = require('os');
+
+// Resolve plugin root directory with fallback
+function resolvePluginRoot() {
+  if (process.env.CLAUDE_PLUGIN_ROOT) {
+    const root = process.env.CLAUDE_PLUGIN_ROOT;
+    if (existsSync(join(root, 'package.json'))) return root;
+  }
+
+  // Try to derive from script location
+  try {
+    // This script is at hooks/session-start.js
+    const scriptDir = __dirname;
+    const candidate = dirname(scriptDir);
+    if (existsSync(join(candidate, 'package.json'))) return candidate;
+  } catch {
+    // __dirname not available
+  }
+
+  // Fallback to common paths
+  const home = homedir();
+  const fallbackPaths = [
+    join(home, '.claude', 'plugins', 'cache', 'claude-teams-gui-marketplace', 'claude-teams-gui'),
+    join(home, '.claude', 'plugins', 'marketplaces', 'claude-teams-gui-marketplace', 'plugin')
+  ];
+
+  for (const path of fallbackPaths) {
+    if (existsSync(join(path, 'package.json'))) return path;
+  }
+
+  return process.cwd();
+}
+
+const PLUGIN_ROOT = resolvePluginRoot();
 
 async function isServerRunning(url) {
   try {
@@ -32,36 +67,52 @@ async function isServerRunning(url) {
   }
 }
 
+function getBunPath() {
+  try {
+    const result = spawnSync('bun', ['--version'], {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: IS_WINDOWS
+    });
+    if (result.status === 0) return 'bun';
+  } catch {
+    // Not in PATH
+  }
+
+  const bunPaths = IS_WINDOWS
+    ? [join(homedir(), '.bun', 'bin', 'bun.exe')]
+    : [join(homedir(), '.bun', 'bin', 'bun'), '/usr/local/bin/bun', '/opt/homebrew/bin/bun'];
+
+  for (const bunPath of bunPaths) {
+    if (existsSync(bunPath)) return bunPath;
+  }
+  return null;
+}
+
 async function startServers() {
-  const projectRoot = process.env.CLAUDE_PROJECT_ROOT || process.cwd();
+  const bunPath = getBunPath();
+  if (!bunPath) {
+    throw new Error('Bun not found. Please install Bun: curl -fsSL https://bun.sh/install | bash');
+  }
+
+  const serverPath = join(PLUGIN_ROOT, 'src', 'server', 'cli.ts');
+  if (!existsSync(serverPath)) {
+    throw new Error(`Server not found at ${serverPath}`);
+  }
 
   // Start backend in background
-  const backend = spawn('bun', ['--hot', 'run', 'src/server/cli.ts'], {
-    cwd: projectRoot,
+  const backend = spawn(bunPath, [serverPath, '--headless'], {
+    cwd: PLUGIN_ROOT,
     detached: true,
     stdio: 'ignore',
     env: {
       ...process.env,
-      SERVER_PORT: '4558'
-    }
+      CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
+      NODE_ENV: 'production'
+    },
+    windowsHide: true
   });
   backend.unref();
-
-  // Wait a bit for backend to start
-  await new Promise(resolve => setTimeout(resolve, 2000));
-
-  // Start frontend in background
-  const frontend = spawn('npx', ['vite', '--host', 'localhost', '--port', '4559'], {
-    cwd: projectRoot,
-    detached: true,
-    stdio: 'ignore',
-    env: {
-      ...process.env,
-      CLIENT_PORT: '4559',
-      CLIENT_HOST: 'localhost'
-    }
-  });
-  frontend.unref();
 }
 
 async function waitForServer(url, timeout = STARTUP_TIMEOUT) {
@@ -79,11 +130,10 @@ async function main() {
   try {
     // Check if auto-start is enabled
     if (!AUTO_START) {
-      // 输出 JSON 格式让 Claude Code 在对话中显示
       console.log(JSON.stringify({
         continue: true,
         suppressOutput: false,
-        systemMessage: '⏭️ Claude Agent Teams UI 自动启动已禁用 (CLAUDE_CHAT_AUTO_START=false)'
+        systemMessage: '⏭ Claude Teams GUI 自动启动已禁用 (CLAUDE_CHAT_AUTO_START=false)'
       }));
       process.exit(0);
     }
@@ -93,12 +143,11 @@ async function main() {
       console.log(JSON.stringify({
         continue: true,
         suppressOutput: false,
-        systemMessage: `🎉 Claude Agent Teams UI 服务已就绪！
+        systemMessage: `✅ Claude Teams GUI 服务已就绪
 
-🌐 前端: http://localhost:4559
-🔧 后端: http://localhost:4558
+🌐 查看界面: http://localhost:4559
 
-💡 访问 http://localhost:4559 开始使用`
+💡 可以开始使用了!`
       }));
       process.exit(0);
     }
@@ -111,18 +160,19 @@ async function main() {
       console.log(JSON.stringify({
         continue: true,
         suppressOutput: false,
-        systemMessage: `🚀 Claude Agent Teams UI 服务启动成功！
+        systemMessage: `🚀 Claude Teams GUI 服务启动成功!
 
-🌐 前端: http://localhost:4559
-🔧 后端: http://localhost:4558
+🌐 查看界面: http://localhost:4559
 
-💡 访问 http://localhost:4559 开始使用`
+💡 可以开始使用了!`
       }));
     } else {
       console.log(JSON.stringify({
         continue: true,
         suppressOutput: false,
-        systemMessage: '⚠️ Claude Agent Teams UI 服务启动超时，请手动检查\n   - 运行: `bash scripts/start.sh`'
+        systemMessage: `⚠️ Claude Teams GUI 服务启动超时
+
+💡 请手动运行: cd ${PLUGIN_ROOT} && bun run src/server/cli.ts`
       }));
     }
 
@@ -131,8 +181,12 @@ async function main() {
     console.log(JSON.stringify({
       continue: true,
       suppressOutput: false,
-      systemMessage: `❌ Claude Agent Teams UI 启动错误: ${err.message}\n   - 运行: \`bash scripts/start.sh\` 手动启动`
-    }));
+      systemMessage: `❌ Claude Teams GUI 启动错误: ${err.message}
+
+💡 请检查:
+   - Bun 是否已安装: bun --version
+   - 插件目录: ${PLUGIN_ROOT}`
+      }));
     process.exit(0);
   }
 }

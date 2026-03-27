@@ -3,11 +3,17 @@
   "hooks": {
     "SessionStart": [
       {
+        "matcher": "startup|clear|compact",
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.js",
-            "timeout": 30
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/smart-install.js",
+            "timeout": 300
+          },
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/start-service.js",
+            "timeout": 60
           }
         ]
       }
