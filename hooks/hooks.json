@@ -8,12 +8,12 @@
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/smart-install.js",
-            "timeout": 10
+            "timeout": 300
           },
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/start-service.js",
-            "timeout": 5
+            "timeout": 60
           }
         ]
       }
