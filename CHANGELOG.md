@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.16](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.15...v0.3.16) (2026-03-27)
+
 ### [0.3.15](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.9...v0.3.15) (2026-03-27)
 
 
