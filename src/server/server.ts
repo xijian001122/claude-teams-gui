@@ -291,7 +291,7 @@ export async function createServer(options: ServerOptions) {
     ? join(pluginRoot, 'dist', 'client')
     : join(__dirname, '../../dist/client');
 
-  console.log(`[Server] Serving frontend from ${clientDistPath}${pluginMode ? 'plugin' : 'development'});
+  console.log(`[Server] Serving frontend from ${clientDistPath}${pluginRoot ? ' (plugin)' : ' (development)'}`);
 
   if (existsSync(clientDistPath)) {
     fastify.register(staticPlugin, {
