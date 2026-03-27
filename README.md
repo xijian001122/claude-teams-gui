@@ -25,12 +25,23 @@ When working with multiple Claude Code Teams simultaneously (e.g., developing se
 | **Persistent Storage** | Independent storage survives team deletion |
 | **Archive** | View archived team conversations |
 | **Desktop Notifications** | System notifications for new messages |
+| **Plugin Auto-Start** | Auto-starts when Claude Code launches |
+
+---
+
+## UI Preview
+
+### Light Mode
+![Claude Teams GUI - Light Mode](./docs/images/ui-light.png)
+
+### Dark Mode
+![Claude Teams GUI - Dark Mode](./docs/images/ui-dark-mode.png)
 
 ---
 
 ## Current Version
 
-**v0.1.1**
+**v0.2.5**
 
 See [CHANGELOG.md](./CHANGELOG.md) for release history.
 

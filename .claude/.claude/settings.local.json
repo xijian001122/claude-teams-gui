@@ -40,7 +40,16 @@
       "Bash(xargs kill:*)",
       "Bash(git tag:*)",
       "Read(//root/**)",
-      "Bash(pkill -f \"bun.*cli\\\\|node.*index\")"
+      "Bash(pkill -f \"bun.*cli\\\\|node.*index\")",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(curl -s http://localhost:4558/)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_snapshot",
+      "Bash(grep -o \"\"ref\"\":\"\"[^\"\"]*dark[^\"\"]*\"\" /root/.claude/projects/-root-claude-chat--claude/60ea9c90-3931-48ab-86d5-c0bfa0989324/tool-results/mcp-playwright-browser_snapshot-1774582800373.txt)",
+      "Bash(grep -o \"\"[^\"\"]*深色[^\"\"]*\"\" /root/.claude/projects/-root-claude-chat--claude/60ea9c90-3931-48ab-86d5-c0bfa0989324/tool-results/mcp-playwright-browser_snapshot-1774582800373.txt)"
     ]
   }
 }
