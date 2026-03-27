@@ -21,10 +21,20 @@ function resolveRoot() {
   }
   try {
     const scriptDir = dirname(fileURLToPath(import.meta.url));
-    return dirname(scriptDir);
+    const candidate = dirname(scriptDir);
+    if (existsSync(join(candidate, 'package.json'))) return candidate;
   } catch {
-    return process.cwd();
+    // ignore
   }
+
+  // Fallback to marketplaces directory (always up-to-date)
+  const home = homedir();
+  const marketplacePath = join(home, '.claude', 'plugins', 'marketplaces', 'claude-teams-gui-marketplace');
+  if (existsSync(join(marketplacePath, 'package.json'))) {
+    return marketplacePath;
+  }
+
+  return process.cwd();
 }
 
 const PLUGIN_ROOT = resolveRoot();
