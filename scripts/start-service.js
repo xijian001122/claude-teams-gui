@@ -27,8 +27,34 @@ function resolveRoot() {
     // ignore
   }
 
-  // Fallback to marketplaces directory (always up-to-date)
+  // Scan cache for versioned plugin directory
   const home = homedir();
+  const cacheBase = join(home, '.claude', 'plugins', 'cache', 'claude-teams-gui-marketplace', 'claude-teams-gui');
+  if (existsSync(cacheBase)) {
+    try {
+      const { readdirSync } = require('fs');
+      const entries = readdirSync(cacheBase, { withFileTypes: true });
+      // Find the latest version directory
+      let latestVersion = null;
+      let latestPath = null;
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const versionPath = join(cacheBase, entry.name);
+          if (existsSync(join(versionPath, 'package.json'))) {
+            if (!latestVersion || entry.name > latestVersion) {
+              latestVersion = entry.name;
+              latestPath = versionPath;
+            }
+          }
+        }
+      }
+      if (latestPath) return latestPath;
+    } catch {
+      // ignore
+    }
+  }
+
+  // Fallback to marketplaces directory
   const marketplacePath = join(home, '.claude', 'plugins', 'marketplaces', 'claude-teams-gui-marketplace');
   if (existsSync(join(marketplacePath, 'package.json'))) {
     return marketplacePath;
