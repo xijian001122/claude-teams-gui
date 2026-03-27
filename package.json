@@ -26,7 +26,8 @@
     "test:e2e": "playwright test",
     "test:coverage": "vitest --coverage",
     "release": "standard-version",
-    "postversion": "node scripts/sync-version.js && git add .claude-plugin/*.json && git commit --amend --no-edit"
+    "postversion": "node scripts/sync-version.js && git add .claude-plugin/*.json && git commit --amend --no-edit",
+    "prepack": "node -e \"const fs=require('fs'); const pkg=JSON.parse(fs.readFileSync('package.json')); fs.writeFileSync('.install-version', JSON.stringify({version:pkg.version,installedAt:new Date().toISOString()}))\""
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",
