@@ -19,7 +19,14 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(cat ~/.claude/plugins/marketplaces/claude-plugins-official/plugins/*/plugin.json)"
+      "Bash(cat ~/.claude/plugins/marketplaces/claude-plugins-official/plugins/*/plugin.json)",
+      "Bash(export CLAUDE_PLUGIN_ROOT=\"$HOME/.claude/plugins/cache/claude-teams-gui-marketplace/claude-teams-gui/0.1.4\")",
+      "Bash(curl -s http://localhost:4558/api/teams)",
+      "Bash(curl -s http://localhost:4559/)",
+      "Bash(python3:*)",
+      "Bash(export CLAUDE_PLUGIN_ROOT=\"$HOME/.claude/plugins/cache/claude-teams-gui-marketplace/claude-teams-gui/0.1.5\")",
+      "Bash(xxd -)",
+      "Bash(npx run:*)"
     ]
   }
 }
