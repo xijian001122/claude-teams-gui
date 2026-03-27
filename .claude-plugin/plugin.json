@@ -1,6 +1,6 @@
 {
   "name": "claude-teams-gui",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Visual chat interface for Claude Code Teams - Auto-start GUI servers and real-time task notifications",
   "author": {
     "name": "xijian001122",
