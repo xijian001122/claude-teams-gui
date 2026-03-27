@@ -7,7 +7,7 @@
  */
 
 import { spawn } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, readdirSync, openSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
 import { fileURLToPath } from 'url';
@@ -44,9 +44,7 @@ function resolveRoot() {
   const cacheBase = join(home, '.claude', 'plugins', 'cache', 'claude-teams-gui-marketplace', 'claude-teams-gui');
   if (existsSync(cacheBase)) {
     try {
-      const { readdirSync } = require('fs');
       const entries = readdirSync(cacheBase, { withFileTypes: true });
-      // Find the latest version directory
       let latestVersion = null;
       let latestPath = null;
       for (const entry of entries) {
@@ -78,6 +76,13 @@ function resolveRoot() {
 const PLUGIN_ROOT = resolveRoot();
 const BACKEND_URL = process.env.CLAUDE_CHAT_URL || 'http://localhost:4558';
 
+// Get log file path
+function getLogPath() {
+  return IS_WINDOWS
+    ? join(homedir(), 'AppData', 'Local', 'Temp', 'claude-teams-gui.log')
+    : '/tmp/claude-teams-gui.log';
+}
+
 // Check if server is already running
 async function isServerRunning() {
   try {
@@ -97,10 +102,11 @@ async function isServerRunning() {
 // Get bun path
 function getBunPath() {
   const bunPaths = IS_WINDOWS
-    ? [join(homedir(), '.bun', 'bin', 'bun.exe')]
-    : [join(homedir(), '.bun', 'bin', 'bun'), '/usr/local/bin/bun', '/opt/homebrew/bin/bun'];
+    ? [join(homedir(), '.bun', 'bin', 'bun.exe'), 'bun.exe']
+    : [join(homedir(), '.bun', 'bin', 'bun'), '/usr/local/bin/bun', '/opt/homebrew/bin/bun', 'bun'];
 
   for (const bunPath of bunPaths) {
+    if (bunPath === 'bun' || bunPath === 'bun.exe') return bunPath;
     if (existsSync(bunPath)) return bunPath;
   }
   return 'bun';
@@ -111,50 +117,55 @@ function hasNodeModules() {
   return existsSync(join(PLUGIN_ROOT, 'node_modules'));
 }
 
-// Start server using dist with node (no bun install needed)
+// Check if dist exists
+function hasDist() {
+  return existsSync(join(PLUGIN_ROOT, 'dist', 'server', 'server', 'cli.js'));
+}
+
+// Start server using dist with node (production mode)
 function startWithNode() {
   const serverPath = join(PLUGIN_ROOT, 'dist', 'server', 'server', 'cli.js');
   if (!existsSync(serverPath)) {
     return false;
   }
 
-  const cmd = IS_WINDOWS
-    ? `start /B node "${serverPath}" --headless >> %TEMP%\\claude-teams-gui.log 2>&1`
-    : `cd "${PLUGIN_ROOT}" && node "${serverPath}" --headless >> /tmp/claude-teams-gui.log 2>&1 &`;
+  const logPath = getLogPath();
 
-  spawn(IS_WINDOWS ? 'cmd' : 'bash', IS_WINDOWS ? ['/C', cmd] : ['-c', cmd], {
-    stdio: 'ignore',
-    detached: !IS_WINDOWS,
+  // Use spawn directly without shell - like thedotmack does
+  const child = spawn('node', [serverPath, '--headless'], {
+    cwd: PLUGIN_ROOT,
+    stdio: ['ignore', 'ignore', 'ignore'],
+    detached: true,
+    windowsHide: true,
     env: {
       ...process.env,
       CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
       NODE_ENV: 'production'
-    },
-    windowsHide: true
+    }
   });
 
+  child.unref();
   return true;
 }
 
-// Start server using bun (for dev mode or when node_modules missing)
+// Start server using bun (dev mode)
 function startWithBun() {
   const serverPath = join(PLUGIN_ROOT, 'src', 'server', 'cli.ts');
+  const bunPath = getBunPath();
 
-  const cmd = IS_WINDOWS
-    ? `start /B bun "${serverPath}" --headless >> %TEMP%\\claude-teams-gui.log 2>&1`
-    : `cd "${PLUGIN_ROOT}" && bun "${serverPath}" --headless >> /tmp/claude-teams-gui.log 2>&1 &`;
-
-  spawn(IS_WINDOWS ? 'cmd' : 'bash', IS_WINDOWS ? ['/C', cmd] : ['-c', cmd], {
-    stdio: 'ignore',
-    detached: !IS_WINDOWS,
+  const child = spawn(bunPath, [serverPath, '--headless'], {
+    cwd: PLUGIN_ROOT,
+    stdio: ['ignore', 'ignore', 'ignore'],
+    detached: true,
+    windowsHide: true,
     env: {
       ...process.env,
       CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
       NODE_ENV: 'development'
-    },
-    windowsHide: true
+    }
   });
 
+  child.unref();
   return true;
 }
 
@@ -162,15 +173,14 @@ function startWithBun() {
 function installInBackground() {
   const bunPath = getBunPath();
 
-  const cmd = IS_WINDOWS
-    ? `start /B "${bunPath}" install >> %TEMP%\\claude-teams-gui-install.log 2>&1`
-    : `cd "${PLUGIN_ROOT}" && ${bunPath} install >> /tmp/claude-teams-gui-install.log 2>&1 &`;
-
-  spawn(IS_WINDOWS ? 'cmd' : 'bash', IS_WINDOWS ? ['/C', cmd] : ['-c', cmd], {
-    stdio: 'ignore',
-    detached: !IS_WINDOWS,
+  const child = spawn(bunPath, ['install'], {
+    cwd: PLUGIN_ROOT,
+    stdio: ['ignore', 'ignore', 'ignore'],
+    detached: true,
     windowsHide: true
   });
+
+  child.unref();
 }
 
 // Main
@@ -191,8 +201,8 @@ async function main() {
     }
 
     // Check if we can start without waiting
-    if (hasNodeModules()) {
-      // node_modules exists - start immediately with node (dist)
+    if (hasNodeModules() && hasDist()) {
+      // node_modules + dist exist - start immediately with node
       if (startWithNode()) {
         console.log(JSON.stringify({
           continue: true,
@@ -205,8 +215,10 @@ async function main() {
         }));
         process.exit(0);
       }
-    } else {
-      // node_modules missing - trigger install in background
+    }
+
+    // If node_modules missing, trigger install in background
+    if (!hasNodeModules()) {
       installInBackground();
       console.log(JSON.stringify({
         continue: true,
@@ -218,7 +230,7 @@ async function main() {
       process.exit(0);
     }
 
-    // Fallback to bun (dev mode)
+    // Fallback to bun + src (dev mode)
     if (startWithBun()) {
       console.log(JSON.stringify({
         continue: true,
