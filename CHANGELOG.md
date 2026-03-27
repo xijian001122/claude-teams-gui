@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.13](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.9...v0.3.13) (2026-03-27)
+
+
+### Features
+
+* 添加钩子调试信息显示在 Claude 界面 ([8e70c1d](https://github.com/xijian001122/claude-teams-gui/commit/8e70c1dd9d27149e345aa6cdc2d99e306b73a67b))
+
+
+### Bug Fixes
+
+* 修复 smart-install.js dist 路径检查和优化 Bun 检测 ([80dbfa6](https://github.com/xijian001122/claude-teams-gui/commit/80dbfa684c1cdcc19c777cb3c0e44b27766420b8))
+
 ### [0.3.12](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.9...v0.3.12) (2026-03-27)
 
 
