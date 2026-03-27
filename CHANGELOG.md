@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.4](https://github.com/xijian001122/claude-teams-gui/compare/v0.1.3...v0.1.4) (2026-03-27)
+
+
+### Features
+
+* 实现插件自启动功能 ([518d3c8](https://github.com/xijian001122/claude-teams-gui/commit/518d3c8672c44235f593b902ed2336d350245b30))
+
 ### [0.1.3](https://github.com/xijian001122/claude-teams-gui/compare/v0.1.2...v0.1.3) (2026-03-26)
 
 
