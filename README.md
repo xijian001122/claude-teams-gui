@@ -43,7 +43,7 @@ Install in Claude Code for automatic startup and real-time notifications:
 ### Step 1: Add Plugin Marketplace
 
 ```bash
-claude plugin marketplace add github:xijian001122/claude-teams-gui
+claude plugin marketplace add https://github.com/xijian001122/claude-teams-gui.git
 ```
 
 ### Step 2: Install Plugin

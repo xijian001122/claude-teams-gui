@@ -1,0 +1,212 @@
+import { watch } from 'chokidar';
+import { join } from 'path';
+import { readFileSync, existsSync } from 'fs';
+import { getDirectoryBirthTime, extractProjectFromCwd } from '../utils/file-stats';
+export class FileWatcherService {
+    watchers = new Map();
+    teamInstances = new Map(); // Track current instance ID for each team
+    claudeTeamsPath;
+    dataSync;
+    fastify;
+    onMemberActivity;
+    constructor(options) {
+        this.claudeTeamsPath = options.claudeTeamsPath;
+        this.dataSync = options.dataSync;
+        this.fastify = options.fastify;
+        this.onMemberActivity = options.onMemberActivity;
+    }
+    /**
+     * Start watching all team directories
+     */
+    async start() {
+        if (!this.claudeTeamsPath) {
+            console.log('[FileWatcher] No Claude teams path configured');
+            return;
+        }
+        // Watch for new teams
+        const teamsWatcher = watch(this.claudeTeamsPath, {
+            persistent: true,
+            ignoreInitial: true,
+            depth: 0
+        });
+        teamsWatcher.on('addDir', async (path) => {
+            const teamName = path.split('/').pop();
+            if (teamName && !teamName.startsWith('.')) {
+                console.log(`[FileWatcher] New team detected: ${teamName}`);
+                this.watchTeam(teamName);
+                const team = await this.dataSync.syncTeam(teamName);
+                // Broadcast team_added event to WebSocket clients
+                if (team) {
+                    this.broadcastTeamAdded(team);
+                }
+            }
+        });
+        teamsWatcher.on('unlinkDir', (path) => {
+            const teamName = path.split('/').pop();
+            if (teamName) {
+                console.log(`[FileWatcher] Team deleted: ${teamName}`);
+                this.unwatchTeam(teamName);
+                this.dataSync.handleTeamDeleted(teamName);
+            }
+        });
+        this.watchers.set('__teams__', teamsWatcher);
+        // Watch existing teams
+        const { readdir } = await import('fs/promises');
+        try {
+            const entries = await readdir(this.claudeTeamsPath, { withFileTypes: true });
+            for (const entry of entries) {
+                if (entry.isDirectory() && !entry.name.startsWith('.')) {
+                    this.watchTeam(entry.name);
+                }
+            }
+        }
+        catch {
+            // Directory doesn't exist yet
+        }
+        console.log('[FileWatcher] Started watching');
+    }
+    /**
+     * Watch a specific team's inboxes
+     */
+    watchTeam(teamName) {
+        const teamPath = join(this.claudeTeamsPath, teamName);
+        const inboxesPath = join(teamPath, 'inboxes');
+        // Track team instance
+        const currentInstance = getDirectoryBirthTime(teamPath);
+        const oldInstance = this.teamInstances.get(teamName);
+        if (oldInstance && oldInstance !== currentInstance) {
+            // Team directory was recreated - instance changed!
+            console.log(`[FileWatcher] Team instance changed: ${teamName} (${oldInstance} -> ${currentInstance})`);
+            // Extract source project from config
+            let sourceProject;
+            const configPath = join(teamPath, 'config.json');
+            if (existsSync(configPath)) {
+                try {
+                    const config = JSON.parse(readFileSync(configPath, 'utf8'));
+                    if (config.members && config.members.length > 0) {
+                        sourceProject = extractProjectFromCwd(config.members[0].cwd);
+                    }
+                }
+                catch (err) {
+                    console.error('[FileWatcher] Error reading team config:', err);
+                }
+            }
+            // Broadcast team_instance_changed event
+            this.broadcastTeamInstanceChanged(teamName, oldInstance, currentInstance, sourceProject || 'unknown');
+        }
+        // Update tracked instance
+        this.teamInstances.set(teamName, currentInstance);
+        const watcher = watch(`${inboxesPath}/*.json`, {
+            persistent: true,
+            ignoreInitial: true
+        });
+        watcher.on('change', async (filePath) => {
+            const fileName = filePath.split('/').pop() || '';
+            const member = fileName.replace('.json', '');
+            console.log(`[FileWatcher] Inbox changed: ${teamName}/${member}`);
+            // Sync the changed inbox
+            await this.dataSync.syncTeam(teamName);
+            // Read the latest message to check its type
+            let messageType;
+            try {
+                const inboxPath = join(this.claudeTeamsPath, teamName, 'inboxes', fileName);
+                const content = readFileSync(inboxPath, 'utf-8');
+                const messages = JSON.parse(content);
+                if (Array.isArray(messages) && messages.length > 0) {
+                    const latestMessage = messages[messages.length - 1];
+                    // Try to parse the text field if it contains JSON
+                    if (latestMessage.text) {
+                        try {
+                            const parsed = JSON.parse(latestMessage.text);
+                            messageType = parsed.type;
+                        }
+                        catch {
+                            // Not JSON, ignore
+                        }
+                    }
+                    // Also check direct type field
+                    if (!messageType && latestMessage.type) {
+                        messageType = latestMessage.type;
+                    }
+                }
+            }
+            catch (err) {
+                console.error('[FileWatcher] Error reading inbox:', err);
+            }
+            // Update member activity status
+            if (this.onMemberActivity) {
+                this.onMemberActivity(teamName, member, messageType);
+            }
+        });
+        this.watchers.set(teamName, watcher);
+    }
+    /**
+     * Stop watching a team
+     */
+    unwatchTeam(teamName) {
+        const watcher = this.watchers.get(teamName);
+        if (watcher) {
+            watcher.close();
+            this.watchers.delete(teamName);
+        }
+        // Clean up instance tracking
+        this.teamInstances.delete(teamName);
+    }
+    /**
+     * Broadcast team_instance_changed event to WebSocket clients
+     */
+    broadcastTeamInstanceChanged(teamName, oldInstance, newInstance, sourceProject) {
+        const wsServer = this.fastify.websocketServer;
+        if (!wsServer || !wsServer.clients) {
+            return;
+        }
+        const eventData = JSON.stringify({
+            type: 'team_instance_changed',
+            team: teamName,
+            oldInstance,
+            newInstance,
+            sourceProject
+        });
+        let sentCount = 0;
+        wsServer.clients.forEach((client) => {
+            if (client.readyState === 1) { // WebSocket.OPEN
+                client.send(eventData);
+                sentCount++;
+            }
+        });
+        console.log(`[WebSocket] Broadcasted team_instance_changed to ${sentCount} clients`);
+    }
+    /**
+     * Broadcast team_added event to WebSocket clients
+     */
+    broadcastTeamAdded(team) {
+        const wsServer = this.fastify.websocketServer;
+        if (!wsServer || !wsServer.clients) {
+            return;
+        }
+        const eventData = JSON.stringify({
+            type: 'team_added',
+            team
+        });
+        let sentCount = 0;
+        wsServer.clients.forEach((client) => {
+            if (client.readyState === 1) { // WebSocket.OPEN
+                client.send(eventData);
+                sentCount++;
+            }
+        });
+        console.log(`[WebSocket] Broadcasted team_added (${team.name}) to ${sentCount} clients`);
+    }
+    /**
+     * Stop all watchers
+     */
+    stop() {
+        for (const [name, watcher] of this.watchers) {
+            watcher.close();
+            console.log(`[FileWatcher] Stopped watching: ${name}`);
+        }
+        this.watchers.clear();
+    }
+}
+export default FileWatcherService;
+//# sourceMappingURL=file-watcher.js.map

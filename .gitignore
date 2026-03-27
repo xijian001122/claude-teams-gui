@@ -5,7 +5,7 @@ node_modules/
 .pnpm-debug.log*
 
 # Build outputs
-dist/
+# dist/ - Included in git for plugin distribution
 dist-ssr/
 build/
 *.tsbuildinfo

@@ -1,0 +1,1 @@
+{"version":3,"file":"logs.d.ts","sourceRoot":"","sources":["../../../../src/server/routes/logs.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,eAAe,EAAE,MAAM,SAAS,CAAC;AAG1C,OAAO,EAAE,aAAa,EAAE,MAAM,oBAAoB,CAAC;AAEnD,MAAM,WAAW,iBAAiB;IAChC,aAAa,EAAE,aAAa,CAAC;CAC9B;AAED,wBAAsB,UAAU,CAC9B,OAAO,EAAE,eAAe,EACxB,OAAO,EAAE,iBAAiB,iBAqF3B;AAED,eAAe,UAAU,CAAC"}
