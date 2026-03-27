@@ -52,36 +52,15 @@ function isBunInstalled() {
     ? [join(homedir(), '.bun', 'bin', 'bun.exe')]
     : [join(homedir(), '.bun', 'bin', 'bun'), '/usr/local/bin/bun', '/opt/homebrew/bin/bun'];
 
-  return bunPaths.some(existsSync);
-}
-
-// Get Bun path
-function getBunPath() {
-  try {
-    const result = spawnSync('bun', ['--version'], {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: IS_WINDOWS
-    });
-    if (result.status === 0) return 'bun';
-  } catch {
-    // Not in PATH
-  }
-
-  const bunPaths = IS_WINDOWS
-    ? [join(homedir(), '.bun', 'bin', 'bun.exe')]
-    : [join(homedir(), '.bun', 'bin', 'bun'), '/usr/local/bin/bun', '/opt/homebrew/bin/bun'];
-
   for (const bunPath of bunPaths) {
-    if (existsSync(bunPath)) return bunPath;
+    if (existsSync(bunPath)) return true;
   }
-
-  return null;
+  return false;
 }
 
-// Install Bun automatically
+// Install Bun automatically based on platform
 function installBun() {
-  console.error('🔧 Bun not found. Installing Bun runtime...');
+  console.error('Bun not found. Installing Bun runtime...');
 
   try {
     if (IS_WINDOWS) {
@@ -99,30 +78,18 @@ function installBun() {
     }
 
     if (isBunInstalled()) {
-      const version = spawnSync(getBunPath() || 'bun', ['--version'], { encoding: 'utf-8' });
-      console.error(`✅ Bun ${version.stdout.trim()} installed successfully`);
+      console.error('Bun installed successfully');
       return true;
     } else {
-      const bunPath = join(homedir(), '.bun', 'bin', 'bun');
-      if (existsSync(bunPath)) {
-        console.error(`✅ Bun installed at ${bunPath}`);
-        console.error('⚠️  Please restart your terminal or add Bun to PATH:');
-        console.error('   export PATH="$HOME/.bun/bin:$PATH"');
-        return true;
-      }
-      throw new Error('Bun installation completed but binary not found');
+      console.error('Bun installation completed but binary not found');
+      console.error('Please restart your terminal and try again.');
+      return false;
     }
   } catch (error) {
-    console.error('❌ Failed to install Bun automatically');
-    console.error('   Please install manually:');
-    if (IS_WINDOWS) {
-      console.error('   - winget install Oven-sh.Bun');
-      console.error('   - Or: powershell -c "irm bun.sh/install.ps1 | iex"');
-    } else {
-      console.error('   - curl -fsSL https://bun.sh/install | bash');
-      console.error('   - Or: brew install oven-sh/bun/bun');
-    }
-    throw error;
+    console.error('Failed to install Bun automatically');
+    console.error('Please install manually:');
+    console.error('   - curl -fsSL https://bun.sh/install | bash');
+    return false;
   }
 }
 
@@ -138,26 +105,24 @@ function needsInstall() {
   }
 }
 
-// Install dependencies
+// Install dependencies using Bun
 function installDeps() {
-  const bunPath = getBunPath();
-  if (!bunPath) {
-    throw new Error('Bun executable not found');
-  }
+  const bunPath = IS_WINDOWS
+    ? join(homedir(), '.bun', 'bin', 'bun.exe')
+    : join(homedir(), '.bun', 'bin', 'bun');
 
-  console.error('📦 Installing dependencies with Bun...');
+  const bunCmd = existsSync(bunPath) ? bunPath : 'bun';
 
-  const bunCmd = IS_WINDOWS && bunPath.includes(' ') ? `"${bunPath}"` : bunPath;
+  console.error('Installing dependencies with Bun...');
 
   try {
     execSync(`${bunCmd} install`, { cwd: ROOT, stdio: ['pipe', 'pipe', 'inherit'], shell: IS_WINDOWS });
   } catch {
     try {
-      execSync(`${bunCmd} install --force`, { cwd: ROOT, stdio: ['pipe', 'pipe', 'inherit'], shell: IS_WINDOWS });
-    } catch {
-      // Fallback to npm
-      console.error('⚠️  Bun install failed, falling back to npm...');
       execSync('npm install', { cwd: ROOT, stdio: ['pipe', 'pipe', 'inherit'], shell: IS_WINDOWS });
+    } catch (npmError) {
+      console.error('Failed to install dependencies');
+      return false;
     }
   }
 
@@ -165,52 +130,35 @@ function installDeps() {
   const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf-8'));
   writeFileSync(MARKER, JSON.stringify({
     version: pkg.version,
-    bun: spawnSync(bunPath, ['--version'], { encoding: 'utf-8' }).stdout.trim(),
     installedAt: new Date().toISOString()
   }));
-}
 
-// Build frontend if needed
-function buildFrontend() {
-  const clientDist = join(ROOT, 'dist', 'client');
-  if (!existsSync(join(clientDist, 'index.html'))) {
-    console.error('🔨 Building frontend...');
-    const bunPath = getBunPath() || 'bun';
-    const bunCmd = IS_WINDOWS && bunPath.includes(' ') ? `"${bunPath}"` : bunPath;
-    try {
-      execSync(`${bunCmd} run build:client`, { cwd: ROOT, stdio: ['pipe', 'pipe', 'inherit'], shell: IS_WINDOWS });
-      console.error('✅ Frontend built successfully');
-    } catch (err) {
-      console.error('⚠️  Failed to build frontend, trying npm...');
-      execSync('npm run build:client', { cwd: ROOT, stdio: ['pipe', 'pipe', 'inherit'], shell: IS_WINDOWS });
-    }
-  }
+  return true;
 }
 
 // Main execution
 try {
   // Step 1: Ensure Bun is installed
   if (!isBunInstalled()) {
-    installBun();
-    if (!isBunInstalled()) {
-      console.error('❌ Bun is required but not available');
+    if (!installBun()) {
+      console.error('Bun is required but not available');
       process.exit(1);
     }
   }
 
   // Step 2: Install dependencies if needed
   if (needsInstall()) {
-    installDeps();
-    console.error('✅ Dependencies installed');
+    if (!installDeps()) {
+      console.error('Failed to install dependencies');
+      process.exit(1);
+    }
+    console.error('Dependencies installed');
   }
-
-  // Step 3: Build frontend if needed
-  buildFrontend();
 
   // Output valid JSON for Claude Code hook contract
   console.log(JSON.stringify({ continue: true, suppressOutput: true }));
 } catch (e) {
-  console.error('❌ Installation failed:', e.message);
+  console.error('Installation failed:', e.message);
   console.log(JSON.stringify({ continue: true, suppressOutput: true }));
   process.exit(1);
 }

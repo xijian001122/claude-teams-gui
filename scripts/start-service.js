@@ -6,11 +6,11 @@
  * It's designed to work both in development mode and as an installed plugin.
  */
 
-const { spawn, spawnSync } = require('child_process');
-const { existsSync } = require('fs');
-const { join, dirname } = require('path');
-const { homedir } = require('os');
-const { fileURLToPath } = require('url');
+import { spawn } from 'child_process';
+import { existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { homedir } from 'os';
+import { fileURLToPath } from 'url';
 
 const IS_WINDOWS = process.platform === 'win32';
 
@@ -22,7 +22,7 @@ function resolveRoot() {
   try {
     const scriptDir = dirname(fileURLToPath(import.meta.url));
     return dirname(scriptDir);
-  } catch (e) {
+  } catch {
     return process.cwd();
   }
 }
@@ -41,24 +41,14 @@ async function isServerRunning() {
     });
     clearTimeout(timeoutId);
     return response.ok;
-  } catch (e) {
+  } catch {
     return false;
   }
 }
 
 // Get bun path
 function getBunPath() {
-  try {
-    const result = spawnSync('bun', ['--version'], {
-    encoding: 'utf-8',
-    stdio: ['pipe', 'pipe', 'pipe'],
-    shell: IS_WINDOWS
-  });
-    if (result.status === 0) return 'bun';
-  } catch (e) {
-    // Not in PATH
-  }
-
+  // Try PATH first
   const bunPaths = IS_WINDOWS
     ? [join(homedir(), '.bun', 'bin', 'bun.exe')]
     : [join(homedir(), '.bun', 'bin', 'bun'), '/usr/local/bin/bun', '/opt/homebrew/bin/bun'];
@@ -66,20 +56,16 @@ function getBunPath() {
   for (const bunPath of bunPaths) {
     if (existsSync(bunPath)) return bunPath;
   }
-  return null;
+  return 'bun'; // Fallback to PATH
 }
 
 // Start the server
 function startServer() {
   const bunPath = getBunPath();
-  if (!bunPath) {
-    console.error('Bun not found. Please install Bun first.');
-    return false;
-  }
-
   const serverPath = join(PLUGIN_ROOT, 'src', 'server', 'cli.ts');
+
   if (!existsSync(serverPath)) {
-    console.error('Server not found at ' + serverPath);
+    console.error(`Server not found at ${serverPath}`);
     return false;
   }
 
@@ -91,7 +77,7 @@ function startServer() {
     ...process.env,
     CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
     NODE_ENV: 'production'
-  },
+    },
     windowsHide: true
   });
 
@@ -107,58 +93,58 @@ async function main() {
     console.log(JSON.stringify({
       continue: true,
       suppressOutput: false,
-      systemMessage: `Claude Teams GUI ready!
+      systemMessage: `✅ Claude Teams GUI 服务已就绪
 
-Frontend: http://localhost:4559
+🌐 查看界面: http://localhost:4559
 
-Ready to use!`
+💡 可以开始使用了!`
     }));
     process.exit(0);
   }
 
-  // Start server
-  if (startServer()) {
-    // Wait for server to be ready
-    let attempts = 0;
-    const maxAttempts = 30;
-    while (attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      if (await isServerRunning()) {
-        console.log(JSON.stringify({
-          continue: true,
-          suppressOutput: false,
-          systemMessage: `Claude Teams GUI started!
+    // Start server
+    if (startServer()) {
+      // Wait for server to be ready
+      let attempts = 0;
+      const maxAttempts = 30;
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (await isServerRunning()) {
+          console.log(JSON.stringify({
+            continue: true,
+            suppressOutput: false,
+            systemMessage: `🚀 Claude Teams GUI 服务启动成功
 
-Frontend: http://localhost:4559
+🌐 查看界面: http://localhost:4559
 
-Ready to use!`
-        }));
-        process.exit(0);
+💡 可以开始使用了!`
+          }));
+          process.exit(0);
+        }
+        attempts++;
       }
-      attempts++;
+
+      console.log(JSON.stringify({
+        continue: true,
+        suppressOutput: false,
+        systemMessage: `⚠️ Claude Teams GUI 服务启动超时
+
+💡 请手动运行: cd ${PLUGIN_ROOT} && bun run src/server/cli.ts`
+      }));
+    } else {
+      console.log(JSON.stringify({
+        continue: true,
+        suppressOutput: false,
+        systemMessage: `❌ Claude Teams GUI 启动失败
+
+💡 请检查 Bun 是否已安装: bun --version`
+      }));
     }
-
-    console.log(JSON.stringify({
-      continue: true,
-      suppressOutput: false,
-      systemMessage: `Claude Teams GUI startup timeout
-
-Please run manually: cd ${PLUGIN_ROOT} && bun run src/server/cli.ts`
-    }));
-  } else {
-    console.log(JSON.stringify({
-      continue: true,
-      suppressOutput: false,
-      systemMessage: `Claude Teams GUI failed to start
-
-Please check if Bun is installed: bun --version`
-    }));
-  }
   } catch (err) {
     console.log(JSON.stringify({
       continue: true,
       suppressOutput: false,
-      systemMessage: `Claude Teams GUI error: ${err.message}`
+      systemMessage: `❌ Claude Teams GUI 启动错误: ${err.message}`
     }));
   }
 
