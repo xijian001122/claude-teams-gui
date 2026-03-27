@@ -99,7 +99,7 @@ async function main() {
       suppressOutput: false,
       systemMessage: `✅ Claude Teams GUI 服务已就绪
 
-🌐 查看界面: http://localhost:4559
+🌐 查看界面: http://localhost:4558
 
 💡 可以开始使用了!`
     }));
@@ -119,7 +119,7 @@ async function main() {
             suppressOutput: false,
             systemMessage: `🚀 Claude Teams GUI 服务启动成功
 
-🌐 查看界面: http://localhost:4559
+🌐 查看界面: http://localhost:4558
 
 💡 可以开始使用了!`
           }));
