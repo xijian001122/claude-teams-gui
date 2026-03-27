@@ -35,19 +35,9 @@ function resolveRoot() {
 const ROOT = resolveRoot();
 const MARKER = join(ROOT, '.install-version');
 
-// Check if Bun is installed
+// Check if Bun is installed (fast check - file existence first, spawn as fallback)
 function isBunInstalled() {
-  try {
-    const result = spawnSync('bun', ['--version'], {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: IS_WINDOWS
-    });
-    if (result.status === 0) return true;
-  } catch {
-    // PATH check failed
-  }
-
+  // Fast path: check common install locations first
   const bunPaths = IS_WINDOWS
     ? [join(homedir(), '.bun', 'bin', 'bun.exe')]
     : [join(homedir(), '.bun', 'bin', 'bun'), '/usr/local/bin/bun', '/opt/homebrew/bin/bun'];
@@ -55,6 +45,20 @@ function isBunInstalled() {
   for (const bunPath of bunPaths) {
     if (existsSync(bunPath)) return true;
   }
+
+  // Fallback: try running bun --version (slower)
+  try {
+    const result = spawnSync('bun', ['--version'], {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: IS_WINDOWS,
+      timeout: 3000  // 3 second timeout
+    });
+    if (result.status === 0) return true;
+  } catch {
+    // PATH check failed
+  }
+
   return false;
 }
 
@@ -96,8 +100,8 @@ function installBun() {
 // Check if dependencies need to be installed
 function needsInstall() {
   if (!existsSync(join(ROOT, 'node_modules'))) return true;
-  // Check if dist/ needs to be built
-  if (!existsSync(join(ROOT, 'dist', 'server', 'index.js'))) return true;
+  // Check if dist/ needs to be built (correct path: dist/server/server/cli.js)
+  if (!existsSync(join(ROOT, 'dist', 'server', 'server', 'cli.js'))) return true;
   try {
     const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf-8'));
     const marker = JSON.parse(readFileSync(MARKER, 'utf-8'));
