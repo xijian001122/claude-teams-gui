@@ -195,17 +195,24 @@ function installInBackground() {
 
 // Main
 async function main() {
+  const messages = [];
+
+  messages.push(`📁 插件目录: ${PLUGIN_ROOT}`);
+  messages.push(`🌐 后端地址: ${BACKEND_URL}`);
+  messages.push(`📦 node_modules: ${hasNodeModules() ? '✅' : '❌'}`);
+  messages.push(`🏗️ dist: ${hasDist() ? '✅' : '❌'}`);
+
   try {
     // Check if server is already running
-    if (await isServerRunning()) {
+    messages.push('🔍 检查服务状态...');
+    const running = await isServerRunning();
+    messages.push(`   服务状态: ${running ? '✅ 运行中' : '⏹️ 未运行'}`);
+
+    if (running) {
       console.log(JSON.stringify({
         continue: true,
         suppressOutput: false,
-        systemMessage: `✅ Claude Teams GUI 服务已就绪
-
-🌐 查看界面: http://localhost:4558
-
-💡 可以开始使用了!`
+        systemMessage: messages.join('\n') + `\n\n✅ Claude Teams GUI 服务已就绪\n\n🌐 查看界面: http://localhost:4558`
       }));
       process.exit(0);
     }
@@ -213,15 +220,12 @@ async function main() {
     // Check if we can start without waiting
     if (hasNodeModules() && hasDist()) {
       // node_modules + dist exist - start immediately with bun (handles ESM)
+      messages.push('🚀 启动服务 (dist模式)...');
       if (startWithDist()) {
         console.log(JSON.stringify({
           continue: true,
           suppressOutput: false,
-          systemMessage: `🚀 Claude Teams GUI 服务启动中
-
-🌐 查看界面: http://localhost:4558
-
-💡 稍后刷新页面即可使用!`
+          systemMessage: messages.join('\n') + `\n\n✅ 服务启动成功\n\n🌐 查看界面: http://localhost:4558`
         }));
         process.exit(0);
       }
@@ -233,23 +237,18 @@ async function main() {
       console.log(JSON.stringify({
         continue: true,
         suppressOutput: false,
-        systemMessage: `📦 正在安装依赖...
-
-💡 首次安装需要几分钟，请稍后重新启动 Claude`
+        systemMessage: messages.join('\n') + `\n\n📦 正在后台安装依赖...\n\n💡 首次安装需要几分钟`
       }));
       process.exit(0);
     }
 
     // Fallback to bun + src (dev mode)
+    messages.push('🚀 启动服务 (dev模式)...');
     if (startWithBun()) {
       console.log(JSON.stringify({
         continue: true,
         suppressOutput: false,
-        systemMessage: `🚀 Claude Teams GUI 服务启动中 (dev模式)
-
-🌐 查看界面: http://localhost:4558
-
-💡 稍后刷新页面即可使用!`
+        systemMessage: messages.join('\n') + `\n\n✅ 服务启动成功 (dev)\n\n🌐 查看界面: http://localhost:4558`
       }));
       process.exit(0);
     }
@@ -257,16 +256,14 @@ async function main() {
     console.log(JSON.stringify({
       continue: true,
       suppressOutput: false,
-      systemMessage: `❌ Claude Teams GUI 启动失败
-
-💡 请手动检查: bun --version`
+      systemMessage: messages.join('\n') + `\n\n❌ 启动失败\n\n💡 请检查: bun --version`
     }));
 
   } catch (err) {
     console.log(JSON.stringify({
       continue: true,
       suppressOutput: false,
-      systemMessage: `❌ Claude Teams GUI 启动错误: ${err.message}`
+      systemMessage: messages.join('\n') + `\n\n❌ 错误: ${err.message}`
     }));
   }
 

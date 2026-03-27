@@ -155,28 +155,55 @@ function installDeps() {
 }
 
 // Main execution
-try {
+async function main() {
+  const messages = [];
+
+  messages.push(`📁 插件目录: ${ROOT}`);
+  messages.push(`🔍 Bun 检查: ${isBunInstalled() ? '✅ 已安装' : '❌ 未安装'}`);
+  messages.push(`📦 node_modules: ${existsSync(join(ROOT, 'node_modules')) ? '✅ 存在' : '❌ 不存在'}`);
+  messages.push(`🏗️ dist: ${existsSync(join(ROOT, 'dist', 'server', 'server', 'cli.js')) ? '✅ 存在' : '❌ 不存在'}`);
+  messages.push(`🔧 needsInstall: ${needsInstall() ? '需要' : '跳过'}`);
+
   // Step 1: Ensure Bun is installed
   if (!isBunInstalled()) {
+    messages.push('⏳ 正在安装 Bun...');
     if (!installBun()) {
-      console.error('Bun is required but not available');
+      console.log(JSON.stringify({
+        continue: true,
+        suppressOutput: false,
+        systemMessage: messages.join('\n') + '\n\n❌ Bun 安装失败'
+      }));
       process.exit(1);
     }
   }
 
   // Step 2: Install dependencies if needed
   if (needsInstall()) {
+    messages.push('⏳ 正在安装依赖...');
     if (!installDeps()) {
-      console.error('Failed to install dependencies');
+      console.log(JSON.stringify({
+        continue: true,
+        suppressOutput: false,
+        systemMessage: messages.join('\n') + '\n\n❌ 依赖安装失败'
+      }));
       process.exit(1);
     }
-    console.error('Dependencies installed');
+    messages.push('✅ 依赖安装完成');
   }
 
   // Output valid JSON for Claude Code hook contract
-  console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-} catch (e) {
-  console.error('Installation failed:', e.message);
-  console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-  process.exit(1);
+  console.log(JSON.stringify({
+    continue: true,
+    suppressOutput: false,
+    systemMessage: messages.join('\n')
+  }));
 }
+
+main().catch(e => {
+  console.log(JSON.stringify({
+    continue: true,
+    suppressOutput: false,
+    systemMessage: `❌ 安装失败: ${e.message}`
+  }));
+  process.exit(1);
+});
