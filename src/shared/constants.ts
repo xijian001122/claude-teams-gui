@@ -5,9 +5,9 @@
 // Default configuration
 export const DEFAULT_CONFIG = {
   port: 4558,
-  host: 'localhost',
+  host: '0.0.0.0',
   clientPort: 4559,
-  clientHost: 'localhost',
+  clientHost: '0.0.0.0',
   dataDir: '~/.claude-chat',
   teamsPath: '~/.claude/teams',
   retentionDays: 90,
