@@ -136,20 +136,29 @@ function startWithNode() {
     return false;
   }
 
-  const cmd = IS_WINDOWS
-    ? `start /B node "${serverPath}" --headless >> %TEMP%\\claude-teams-gui.log 2>&1`
-    : `cd "${PLUGIN_ROOT}" && node "${serverPath}" --headless >> /tmp/claude-teams-gui.log 2>&1 &`;
-
-  spawn(IS_WINDOWS ? 'cmd' : 'bash', IS_WINDOWS ? ['/C', cmd] : ['-c', cmd], {
-    stdio: 'ignore',
-    detached: !IS_WINDOWS,
-    env: {
-      ...process.env,
-      CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
-      NODE_ENV: 'production'
-    },
-    windowsHide: true
-  });
+  if (IS_WINDOWS) {
+    // Windows: use powershell to properly background and redirect
+    const logFile = join(homedir(), 'AppData', 'Local', 'Temp', 'claude-teams-gui.log');
+    const psCmd = `Start-Process node -ArgumentList '${serverPath}','--headless' -WindowStyle Hidden -RedirectStandardOutput '${logFile}' -RedirectStandardError '${logFile}' -WorkingDirectory '${PLUGIN_ROOT}'`;
+    spawn('powershell', ['-WindowStyle', 'Hidden', '-Command', psCmd], {
+      stdio: 'ignore',
+      detached: true,
+      env: {
+        ...process.env,
+        CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
+        NODE_ENV: 'production'
+      },
+      windowsHide: true
+    });
+  } else {
+    // Unix: use bash with &
+    const cmd = `cd "${PLUGIN_ROOT}" && CLAUDE_PLUGIN_ROOT="${PLUGIN_ROOT}" NODE_ENV=production node "${serverPath}" --headless >> /tmp/claude-teams-gui.log 2>&1 &`;
+    spawn('bash', ['-c', cmd], {
+      stdio: 'ignore',
+      detached: true,
+      windowsHide: true
+    });
+  }
 
   return true;
 }
@@ -158,20 +167,29 @@ function startWithNode() {
 function startWithBun(bunPath) {
   const serverPath = join(PLUGIN_ROOT, 'src', 'server', 'cli.ts');
 
-  const cmd = IS_WINDOWS
-    ? `start /B "${bunPath}" "${serverPath}" --headless >> %TEMP%\\claude-teams-gui.log 2>&1`
-    : `cd "${PLUGIN_ROOT}" && "${bunPath}" "${serverPath}" --headless >> /tmp/claude-teams-gui.log 2>&1 &`;
-
-  spawn(IS_WINDOWS ? 'cmd' : 'bash', IS_WINDOWS ? ['/C', cmd] : ['-c', cmd], {
-    stdio: 'ignore',
-    detached: !IS_WINDOWS,
-    env: {
-      ...process.env,
-      CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
-      NODE_ENV: 'development'
-    },
-    windowsHide: true
-  });
+  if (IS_WINDOWS) {
+    // Windows: use powershell
+    const logFile = join(homedir(), 'AppData', 'Local', 'Temp', 'claude-teams-gui.log');
+    const psCmd = `Start-Process '${bunPath}' -ArgumentList '${serverPath}','--headless' -WindowStyle Hidden -RedirectStandardOutput '${logFile}' -RedirectStandardError '${logFile}' -WorkingDirectory '${PLUGIN_ROOT}'`;
+    spawn('powershell', ['-WindowStyle', 'Hidden', '-Command', psCmd], {
+      stdio: 'ignore',
+      detached: true,
+      env: {
+        ...process.env,
+        CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
+        NODE_ENV: 'development'
+      },
+      windowsHide: true
+    });
+  } else {
+    // Unix
+    const cmd = `cd "${PLUGIN_ROOT}" && CLAUDE_PLUGIN_ROOT="${PLUGIN_ROOT}" NODE_ENV=development "${bunPath}" "${serverPath}" --headless >> /tmp/claude-teams-gui.log 2>&1 &`;
+    spawn('bash', ['-c', cmd], {
+      stdio: 'ignore',
+      detached: true,
+      windowsHide: true
+    });
+  }
 
   return true;
 }
