@@ -69,19 +69,22 @@ function startServer() {
     return false;
   }
 
-  const child = spawn(bunPath, [serverPath, '--headless'], {
+  // Use nohup with shell to properly detach
+  const cmd = `${bunPath} "${serverPath}" --headless`;
+  const child = spawn('nohup', ['sh', '-c', `${cmd} > /tmp/claude-teams-gui.log 2>&1 &`], {
     cwd: PLUGIN_ROOT,
-    detached: true,
     stdio: 'ignore',
     env: {
-    ...process.env,
-    CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
-    NODE_ENV: 'production'
-    },
-    windowsHide: true
+      ...process.env,
+      CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
+      NODE_ENV: 'production'
+    }
   });
 
-  child.unref();
+  child.on('error', (err) => {
+    console.error(`Failed to start server: ${err.message}`);
+  });
+
   return true;
 }
 
