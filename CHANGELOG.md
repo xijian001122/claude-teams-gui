@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.10](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.9...v0.3.10) (2026-03-27)
+
+
+### Bug Fixes
+
+* 修复 smart-install.js dist 路径检查和优化 Bun 检测 ([80dbfa6](https://github.com/xijian001122/claude-teams-gui/commit/80dbfa684c1cdcc19c777cb3c0e44b27766420b8))
+
 ### [0.1.5](https://github.com/xijian001122/claude-teams-gui/compare/v0.1.4...v0.1.5) (2026-03-27)
 
 
