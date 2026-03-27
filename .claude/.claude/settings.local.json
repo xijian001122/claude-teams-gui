@@ -1,21 +1,25 @@
 {
   "permissions": {
     "allow": [
-      "Read(//root/claude-chat/**)",
-      "Bash(openspec new:*)",
-      "Bash(openspec status:*)",
-      "Bash(openspec instructions:*)",
-      "Bash(cat /root/claude-chat/.commitlintrc*)",
-      "Bash(npm install:*)",
-      "Bash(chmod:*)",
+      "Bash(gh release:*)",
+      "Bash(pkill -f \"bun --hot run src/server/cli.ts\")",
+      "Bash(pkill -f \"vite --host localhost --port 4559\")",
+      "Bash(kill -9 2988480 3019579 3019945 3019963 3019964)",
+      "Bash(find ~/.claude/plugins -name smart-install.js -o *.js)",
+      "Bash(find ~/.claude/plugins -type d -name claude-teams-gui*)",
+      "Bash(claude plugin:*)",
+      "Bash(bun build:*)",
+      "Bash(cat ~/.claude/plugins/marketplaces/claude-plugins-official/plugins/*/hooks/hooks.json)",
       "Bash(npm run:*)",
+      "Bash(export CLAUDE_PLUGIN_ROOT=\"$HOME/.claude/plugins/cache/claude-teams-gui-marketplace/claude-teams-gui/0.1.3\")",
+      "Bash(node \"$CLAUDE_PLUGIN_ROOT/scripts/smart-install.js\")",
+      "Bash(find ~/.claude/plugins/cache -type d -name claude-teams-gui*)",
+      "Bash(export CLAUDE_PLUGIN_ROOT=\"$HOME/.claude/plugins/cache/claude-teams-gui-marketplace/claude-teams-gui/0.1.1\")",
+      "Bash(node \"$CLAUDE_PLUGIN_ROOT/scripts/start-service.js\")",
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git checkout:*)",
-      "Bash(git merge:*)",
-      "Bash(git stash:*)",
-      "Bash(git pull:*)"
+      "Bash(cat ~/.claude/plugins/marketplaces/claude-plugins-official/plugins/*/plugin.json)"
     ]
   }
 }
