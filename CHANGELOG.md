@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.5](https://github.com/xijian001122/claude-teams-gui/compare/v0.1.4...v0.1.5) (2026-03-27)
+
+
+### Bug Fixes
+
+* 将脚本转换为 ES 模块语法 ([92b5eaf](https://github.com/xijian001122/claude-teams-gui/commit/92b5eaf198f42155feaed6232abe3c1538ef6299))
+* 更新 marketplace 指向 GitHub URL ([eee9e70](https://github.com/xijian001122/claude-teams-gui/commit/eee9e701ffac0ceb2a073175a98062904f754b72))
+* 添加 type: module 到 package.json ([a3b689b](https://github.com/xijian001122/claude-teams-gui/commit/a3b689b231b351bd09ddb70c6813f817717fdc23))
+
 ### [0.1.4](https://github.com/xijian001122/claude-teams-gui/compare/v0.1.3...v0.1.4) (2026-03-27)
 
 
