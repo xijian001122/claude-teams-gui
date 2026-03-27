@@ -3,7 +3,7 @@
  * Start Service Script for Claude Teams GUI
  *
  * This script starts the backend server which also serves the frontend static files.
- * It's designed to work both in development mode and as an installed plugin.
+ * Optimized to avoid re-downloading node_modules on every start.
  */
 
 import { spawn } from 'child_process';
@@ -58,7 +58,6 @@ async function isServerRunning() {
 
 // Get bun path
 function getBunPath() {
-  // Try PATH first
   const bunPaths = IS_WINDOWS
     ? [join(homedir(), '.bun', 'bin', 'bun.exe')]
     : [join(homedir(), '.bun', 'bin', 'bun'), '/usr/local/bin/bun', '/opt/homebrew/bin/bun'];
@@ -66,37 +65,74 @@ function getBunPath() {
   for (const bunPath of bunPaths) {
     if (existsSync(bunPath)) return bunPath;
   }
-  return 'bun'; // Fallback to PATH
+  return 'bun';
 }
 
-// Start the server
-function startServer() {
-  const serverDistPath = join(PLUGIN_ROOT, 'dist', 'server', 'index.js');
-  const serverDevPath = join(PLUGIN_ROOT, 'src', 'server', 'cli.ts');
-  const serverPath = existsSync(serverDistPath) ? serverDistPath : serverDevPath;
+// Check if node_modules exists
+function hasNodeModules() {
+  return existsSync(join(PLUGIN_ROOT, 'node_modules'));
+}
 
-  // Determine runtime (node for dist, bun for src)
-  const useBun = !existsSync(serverDistPath);
-  const runtime = useBun ? getBunPath() : 'node';
-  const args = useBun ? [serverPath, '--headless'] : [serverPath, '--headless'];
-
+// Start server using dist with node (no bun install needed)
+function startWithNode() {
+  const serverPath = join(PLUGIN_ROOT, 'dist', 'server', 'server', 'cli.js');
   if (!existsSync(serverPath)) {
-    console.error(`Server not found at ${serverPath}`);
     return false;
   }
 
-  // Use bash -c with & to properly detach
-  const cmd = `cd "${PLUGIN_ROOT}" && ${runtime} ${args.join(' ')} >> /tmp/claude-teams-gui.log 2>&1`;
-  spawn('bash', ['-c', `${cmd} &`], {
+  const cmd = IS_WINDOWS
+    ? `start /B node "${serverPath}" --headless >> %TEMP%\\claude-teams-gui.log 2>&1`
+    : `cd "${PLUGIN_ROOT}" && node "${serverPath}" --headless >> /tmp/claude-teams-gui.log 2>&1 &`;
+
+  spawn(IS_WINDOWS ? 'cmd' : 'bash', IS_WINDOWS ? ['/C', cmd] : ['-c', cmd], {
     stdio: 'ignore',
+    detached: !IS_WINDOWS,
     env: {
       ...process.env,
       CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
       NODE_ENV: 'production'
-    }
+    },
+    windowsHide: true
   });
 
   return true;
+}
+
+// Start server using bun (for dev mode or when node_modules missing)
+function startWithBun() {
+  const serverPath = join(PLUGIN_ROOT, 'src', 'server', 'cli.ts');
+
+  const cmd = IS_WINDOWS
+    ? `start /B bun "${serverPath}" --headless >> %TEMP%\\claude-teams-gui.log 2>&1`
+    : `cd "${PLUGIN_ROOT}" && bun "${serverPath}" --headless >> /tmp/claude-teams-gui.log 2>&1 &`;
+
+  spawn(IS_WINDOWS ? 'cmd' : 'bash', IS_WINDOWS ? ['/C', cmd] : ['-c', cmd], {
+    stdio: 'ignore',
+    detached: !IS_WINDOWS,
+    env: {
+      ...process.env,
+      CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
+      NODE_ENV: 'development'
+    },
+    windowsHide: true
+  });
+
+  return true;
+}
+
+// Install dependencies in background
+function installInBackground() {
+  const bunPath = getBunPath();
+
+  const cmd = IS_WINDOWS
+    ? `start /B "${bunPath}" install >> %TEMP%\\claude-teams-gui-install.log 2>&1`
+    : `cd "${PLUGIN_ROOT}" && ${bunPath} install >> /tmp/claude-teams-gui-install.log 2>&1 &`;
+
+  spawn(IS_WINDOWS ? 'cmd' : 'bash', IS_WINDOWS ? ['/C', cmd] : ['-c', cmd], {
+    stdio: 'ignore',
+    detached: !IS_WINDOWS,
+    windowsHide: true
+  });
 }
 
 // Main
@@ -104,56 +140,68 @@ async function main() {
   try {
     // Check if server is already running
     if (await isServerRunning()) {
+      console.log(JSON.stringify({
+        continue: true,
+        suppressOutput: false,
+        systemMessage: `✅ Claude Teams GUI 服务已就绪
+
+🌐 查看界面: http://localhost:4558
+
+💡 可以开始使用了!`
+      }));
+      process.exit(0);
+    }
+
+    // Check if we can start without waiting
+    if (hasNodeModules()) {
+      // node_modules exists - start immediately with node (dist)
+      if (startWithNode()) {
+        console.log(JSON.stringify({
+          continue: true,
+          suppressOutput: false,
+          systemMessage: `🚀 Claude Teams GUI 服务启动中
+
+🌐 查看界面: http://localhost:4558
+
+💡 稍后刷新页面即可使用!`
+        }));
+        process.exit(0);
+      }
+    } else {
+      // node_modules missing - trigger install in background
+      installInBackground();
+      console.log(JSON.stringify({
+        continue: true,
+        suppressOutput: false,
+        systemMessage: `📦 正在安装依赖...
+
+💡 首次安装需要几分钟，请稍后重新启动 Claude`
+      }));
+      process.exit(0);
+    }
+
+    // Fallback to bun (dev mode)
+    if (startWithBun()) {
+      console.log(JSON.stringify({
+        continue: true,
+        suppressOutput: false,
+        systemMessage: `🚀 Claude Teams GUI 服务启动中 (dev模式)
+
+🌐 查看界面: http://localhost:4558
+
+💡 稍后刷新页面即可使用!`
+      }));
+      process.exit(0);
+    }
+
     console.log(JSON.stringify({
       continue: true,
       suppressOutput: false,
-      systemMessage: `✅ Claude Teams GUI 服务已就绪
+      systemMessage: `❌ Claude Teams GUI 启动失败
 
-🌐 查看界面: http://localhost:4558
-
-💡 可以开始使用了!`
+💡 请手动检查: bun --version`
     }));
-    process.exit(0);
-  }
 
-    // Start server
-    if (startServer()) {
-      // Wait for server to be ready
-      let attempts = 0;
-      const maxAttempts = 30;
-      while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        if (await isServerRunning()) {
-          console.log(JSON.stringify({
-            continue: true,
-            suppressOutput: false,
-            systemMessage: `🚀 Claude Teams GUI 服务启动成功
-
-🌐 查看界面: http://localhost:4558
-
-💡 可以开始使用了!`
-          }));
-          process.exit(0);
-        }
-        attempts++;
-      }
-
-      console.log(JSON.stringify({
-        continue: true,
-        suppressOutput: false,
-        systemMessage: `⚠️ Claude Teams GUI 服务启动超时
-
-💡 请手动运行: cd ${PLUGIN_ROOT} && bun run src/server/cli.ts`
-      }));
-    } else {
-      console.log(JSON.stringify({
-        continue: true,
-        suppressOutput: false,
-        systemMessage: `❌ Claude Teams GUI 启动失败
-
-💡 请检查 Bun 是否已安装: bun --version`
-      }));
-    }
   } catch (err) {
     console.log(JSON.stringify({
       continue: true,
