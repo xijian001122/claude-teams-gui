@@ -14,6 +14,18 @@ import { fileURLToPath } from 'url';
 
 const IS_WINDOWS = process.platform === 'win32';
 
+// Compare versions (simple semver comparison)
+function compareVersions(a, b) {
+  const partsA = a.split('.').map(Number);
+  const partsB = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+    const numA = partsA[i] || 0;
+    const numB = partsB[i] || 0;
+    if (numA !== numB) return numA - numB;
+  }
+  return 0;
+}
+
 // Resolve plugin root
 function resolveRoot() {
   if (process.env.CLAUDE_PLUGIN_ROOT) {
@@ -41,7 +53,7 @@ function resolveRoot() {
         if (entry.isDirectory()) {
           const versionPath = join(cacheBase, entry.name);
           if (existsSync(join(versionPath, 'package.json'))) {
-            if (!latestVersion || entry.name > latestVersion) {
+            if (!latestVersion || compareVersions(entry.name, latestVersion) > 0) {
               latestVersion = entry.name;
               latestPath = versionPath;
             }
