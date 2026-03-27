@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.17](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.15...v0.3.17) (2026-03-27)
+
+
+### Bug Fixes
+
+* 默认监听 0.0.0.0 支持 WSL/远程访问 ([e162f9e](https://github.com/xijian001122/claude-teams-gui/commit/e162f9e97026445ca6bb48dd606d50f5d10f5e84))
+
 ### [0.3.16](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.15...v0.3.16) (2026-03-27)
 
 ### [0.3.15](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.9...v0.3.15) (2026-03-27)
