@@ -136,11 +136,12 @@ function startWithNode() {
   }
 
   const logPath = getLogPath();
+  const logFd = openSync(logPath, 'a');
 
   // Use spawn directly without shell - like thedotmack does
   const child = spawn('node', [serverPath, '--headless'], {
     cwd: PLUGIN_ROOT,
-    stdio: ['ignore', 'ignore', 'ignore'],
+    stdio: ['ignore', logFd, logFd],
     detached: true,
     windowsHide: true,
     env: {
@@ -158,10 +159,12 @@ function startWithNode() {
 function startWithBun() {
   const serverPath = join(PLUGIN_ROOT, 'src', 'server', 'cli.ts');
   const bunPath = getBunPath();
+  const logPath = getLogPath();
+  const logFd = openSync(logPath, 'a');
 
   const child = spawn(bunPath, [serverPath, '--headless'], {
     cwd: PLUGIN_ROOT,
-    stdio: ['ignore', 'ignore', 'ignore'],
+    stdio: ['ignore', logFd, logFd],
     detached: true,
     windowsHide: true,
     env: {
