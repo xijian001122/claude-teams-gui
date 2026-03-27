@@ -25,7 +25,8 @@
     "test": "vitest",
     "test:e2e": "playwright test",
     "test:coverage": "vitest --coverage",
-    "release": "standard-version"
+    "release": "standard-version",
+    "postversion": "node scripts/sync-version.js && git add .claude-plugin/*.json && git commit --amend --no-edit"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",
