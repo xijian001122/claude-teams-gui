@@ -109,11 +109,8 @@ function needsInstall() {
 
 // Install dependencies using Bun
 function installDeps() {
-  const bunPath = IS_WINDOWS
-    ? join(homedir(), '.bun', 'bin', 'bun.exe')
-    : join(homedir(), '.bun', 'bin', 'bun');
-
-  const bunCmd = existsSync(bunPath) ? bunPath : 'bun';
+  // On Windows, always use 'bun' from PATH to avoid backslash issues in shell
+  const bunCmd = IS_WINDOWS ? 'bun' : (existsSync(join(homedir(), '.bun', 'bin', 'bun')) ? join(homedir(), '.bun', 'bin', 'bun') : 'bun');
 
   console.error('Installing dependencies with Bun...');
 

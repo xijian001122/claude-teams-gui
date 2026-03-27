@@ -99,14 +99,20 @@ async function isServerRunning() {
   }
 }
 
-// Get bun path
+// Get bun path - on Windows, use 'bun' from PATH to avoid backslash issues
 function getBunPath() {
-  const bunPaths = IS_WINDOWS
-    ? [join(homedir(), '.bun', 'bin', 'bun.exe'), 'bun.exe']
-    : [join(homedir(), '.bun', 'bin', 'bun'), '/usr/local/bin/bun', '/opt/homebrew/bin/bun', 'bun'];
+  if (IS_WINDOWS) return 'bun';
+
+  // On Unix, check common locations
+  const bunPaths = [
+    join(homedir(), '.bun', 'bin', 'bun'),
+    '/usr/local/bin/bun',
+    '/opt/homebrew/bin/bun',
+    'bun'
+  ];
 
   for (const bunPath of bunPaths) {
-    if (bunPath === 'bun' || bunPath === 'bun.exe') return bunPath;
+    if (bunPath === 'bun') return bunPath;
     if (existsSync(bunPath)) return bunPath;
   }
   return 'bun';
