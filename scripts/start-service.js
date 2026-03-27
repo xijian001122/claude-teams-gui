@@ -128,8 +128,8 @@ function hasDist() {
   return existsSync(join(PLUGIN_ROOT, 'dist', 'server', 'server', 'cli.js'));
 }
 
-// Start server using dist with node (production mode)
-function startWithNode() {
+// Start server using dist with bun (production mode - bun handles ESM better)
+function startWithDist() {
   const serverPath = join(PLUGIN_ROOT, 'dist', 'server', 'server', 'cli.js');
   if (!existsSync(serverPath)) {
     return false;
@@ -137,9 +137,10 @@ function startWithNode() {
 
   const logPath = getLogPath();
   const logFd = openSync(logPath, 'a');
+  const bunPath = getBunPath();
 
-  // Use spawn directly without shell - like thedotmack does
-  const child = spawn('node', [serverPath, '--headless'], {
+  // Use bun to run dist - it handles ESM imports without .js extensions
+  const child = spawn(bunPath, [serverPath, '--headless'], {
     cwd: PLUGIN_ROOT,
     stdio: ['ignore', logFd, logFd],
     detached: true,
@@ -211,8 +212,8 @@ async function main() {
 
     // Check if we can start without waiting
     if (hasNodeModules() && hasDist()) {
-      // node_modules + dist exist - start immediately with node
-      if (startWithNode()) {
+      // node_modules + dist exist - start immediately with bun (handles ESM)
+      if (startWithDist()) {
         console.log(JSON.stringify({
           continue: true,
           suppressOutput: false,

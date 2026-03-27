@@ -49,7 +49,8 @@
       "mcp__playwright__browser_click",
       "mcp__playwright__browser_snapshot",
       "Bash(grep -o \"\"ref\"\":\"\"[^\"\"]*dark[^\"\"]*\"\" /root/.claude/projects/-root-claude-chat--claude/60ea9c90-3931-48ab-86d5-c0bfa0989324/tool-results/mcp-playwright-browser_snapshot-1774582800373.txt)",
-      "Bash(grep -o \"\"[^\"\"]*深色[^\"\"]*\"\" /root/.claude/projects/-root-claude-chat--claude/60ea9c90-3931-48ab-86d5-c0bfa0989324/tool-results/mcp-playwright-browser_snapshot-1774582800373.txt)"
+      "Bash(grep -o \"\"[^\"\"]*深色[^\"\"]*\"\" /root/.claude/projects/-root-claude-chat--claude/60ea9c90-3931-48ab-86d5-c0bfa0989324/tool-results/mcp-playwright-browser_snapshot-1774582800373.txt)",
+      "Bash(kill:*)"
     ]
   }
 }

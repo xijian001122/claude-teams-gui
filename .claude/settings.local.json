@@ -89,7 +89,19 @@
       "Bash(mv openspec/changes/task-created-hook openspec/changes/archive/2026-03-26-task-created-hook)",
       "Bash(git reset:*)",
       "Bash(git restore:*)",
-      "Bash(git check-ignore:*)"
+      "Bash(git check-ignore:*)",
+      "Bash(git fetch:*)",
+      "Bash(git tag:*)",
+      "Bash(gh release:*)",
+      "Bash(netstat -tlnp)",
+      "Bash(npm pack:*)",
+      "Bash(tar -tzf /tmp/claude-teams-gui-0.2.6.tgz)",
+      "Bash(tar -tzf /tmp/claude-teams-gui-0.2.5.tgz)",
+      "Bash(npm version:*)",
+      "Bash(tar -tzf /tmp/claude-teams-gui-0.3.1.tgz)",
+      "Bash(tar -tzf /tmp/claude-teams-gui-0.3.3.tgz)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)"
     ]
   },
   "hooks": {

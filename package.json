@@ -1,6 +1,6 @@
 {
   "name": "claude-teams-gui",
-  "version": "0.3.4",
+  "version": "0.3.8",
   "type": "module",
   "description": "Visual chat interface for Claude Code Teams",
   "main": "dist/server/index.js",
@@ -15,7 +15,7 @@
     "start:config": "bash scripts/start.sh",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
-    "build:server": "tsc -p src/server/tsconfig.json",
+    "build:server": "tsc -p src/server/tsconfig.json && cp src/server/package.json dist/server/",
     "build:prod": "NODE_ENV=production npm run build",
     "start": "node dist/server/index.js",
     "type-check": "tsc --noEmit",
