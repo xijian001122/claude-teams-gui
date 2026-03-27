@@ -61,28 +61,29 @@ function getBunPath() {
 
 // Start the server
 function startServer() {
-  const bunPath = getBunPath();
-  const serverPath = join(PLUGIN_ROOT, 'src', 'server', 'cli.ts');
+  const serverDistPath = join(PLUGIN_ROOT, 'dist', 'server', 'index.js');
+  const serverDevPath = join(PLUGIN_ROOT, 'src', 'server', 'cli.ts');
+  const serverPath = existsSync(serverDistPath) ? serverDistPath : serverDevPath;
+
+  // Determine runtime (node for dist, bun for src)
+  const useBun = !existsSync(serverDistPath);
+  const runtime = useBun ? getBunPath() : 'node';
+  const args = useBun ? [serverPath, '--headless'] : [serverPath, '--headless'];
 
   if (!existsSync(serverPath)) {
     console.error(`Server not found at ${serverPath}`);
     return false;
   }
 
-  // Use nohup with shell to properly detach
-  const cmd = `${bunPath} "${serverPath}" --headless`;
-  const child = spawn('nohup', ['sh', '-c', `${cmd} > /tmp/claude-teams-gui.log 2>&1 &`], {
-    cwd: PLUGIN_ROOT,
+  // Use bash -c with & to properly detach
+  const cmd = `cd "${PLUGIN_ROOT}" && ${runtime} ${args.join(' ')} >> /tmp/claude-teams-gui.log 2>&1`;
+  spawn('bash', ['-c', `${cmd} &`], {
     stdio: 'ignore',
     env: {
       ...process.env,
       CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
       NODE_ENV: 'production'
     }
-  });
-
-  child.on('error', (err) => {
-    console.error(`Failed to start server: ${err.message}`);
   });
 
   return true;

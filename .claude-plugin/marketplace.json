@@ -10,7 +10,7 @@
     {
       "name": "claude-teams-gui",
       "description": "Visual chat interface for Claude Code Teams - Auto-start GUI servers and real-time task notifications. Provides WeChat-like messaging experience for AI agent collaboration.",
-      "version": "0.2.2",
+      "version": "0.2.4",
       "author": {
         "name": "xijian001122",
         "email": "xijian001122@163.com"

@@ -26,7 +26,21 @@
       "Bash(python3:*)",
       "Bash(export CLAUDE_PLUGIN_ROOT=\"$HOME/.claude/plugins/cache/claude-teams-gui-marketplace/claude-teams-gui/0.1.5\")",
       "Bash(xxd -)",
-      "Bash(npx run:*)"
+      "Bash(npx run:*)",
+      "Bash(curl -s https://raw.githubusercontent.com/xijian001122/claude-teams-gui/main/.claude-plugin/marketplace.json)",
+      "Bash(rm -rf ~/.claude/plugins/cache/claude-teams-gui-marketplace)",
+      "Bash(rm -rf ~/.claude/plugins/marketplaces/claude-teams-gui-marketplace)",
+      "Bash(export CLAUDE_PLUGIN_ROOT=\"$HOME/.claude/plugins/cache/claude-teams-gui-marketplace/claude-teams-gui/0.2.0\")",
+      "Bash(openspec status:*)",
+      "Bash(curl -s --connect-timeout 2 http://localhost:4558/api/teams)",
+      "Bash(ls:*)",
+      "Bash(node:*)",
+      "Bash(bun:*)",
+      "Bash(pkill -f \"bun.*cli.ts\")",
+      "Bash(xargs kill:*)",
+      "Bash(git tag:*)",
+      "Read(//root/**)",
+      "Bash(pkill -f \"bun.*cli\\\\|node.*index\")"
     ]
   }
 }

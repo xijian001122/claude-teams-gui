@@ -96,6 +96,8 @@ function installBun() {
 // Check if dependencies need to be installed
 function needsInstall() {
   if (!existsSync(join(ROOT, 'node_modules'))) return true;
+  // Check if dist/ needs to be built
+  if (!existsSync(join(ROOT, 'dist', 'server', 'index.js'))) return true;
   try {
     const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf-8'));
     const marker = JSON.parse(readFileSync(MARKER, 'utf-8'));
@@ -123,6 +125,21 @@ function installDeps() {
     } catch (npmError) {
       console.error('Failed to install dependencies');
       return false;
+    }
+  }
+
+  // Build dist/ for production use
+  console.error('Building dist/...');
+  try {
+    execSync(`${bunCmd} run build:client`, { cwd: ROOT, stdio: ['pipe', 'pipe', 'inherit'], shell: IS_WINDOWS, timeout: 180000 });
+    execSync(`${bunCmd} run build:server`, { cwd: ROOT, stdio: ['pipe', 'pipe', 'inherit'], shell: IS_WINDOWS, timeout: 60000 });
+  } catch (buildError) {
+    console.error('Build failed, trying npm...');
+    try {
+      execSync('npm run build', { cwd: ROOT, stdio: ['pipe', 'pipe', 'inherit'], shell: IS_WINDOWS, timeout: 240000 });
+    } catch {
+      console.error('Build failed');
+      // Continue anyway - start-service will fall back to dev mode
     }
   }
 
