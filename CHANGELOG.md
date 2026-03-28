@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.23](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.22...v0.3.23) (2026-03-28)
+
+
+### Bug Fixes
+
+* **FileWatcher 路径解析**: 使用 `path.basename()` 替代 `split('/')` 修复 Windows 消息同步问题
+
 ### [0.3.22](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.20...v0.3.22) (2026-03-28)
 
 

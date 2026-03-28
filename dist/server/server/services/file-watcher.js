@@ -119,7 +119,7 @@ export class FileWatcherService {
             return;
         }
         watcher.on('change', async (filePath) => {
-            const fileName = filePath.split('/').pop() || '';
+            const fileName = basename(filePath);
             const member = fileName.replace('.json', '');
             console.log(`[FileWatcher] Inbox changed: ${teamName}/${member}, file: ${filePath}`);
             // Sync the changed inbox
