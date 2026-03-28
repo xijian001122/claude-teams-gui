@@ -112,10 +112,14 @@ export class DataSyncService {
             teamInstance
         };
         // Save to database
+        const existingTeam = await this.db.getTeam(teamName);
+        const existingMemberCount = existingTeam?.members?.length || 0;
         await this.db.upsertTeam(team);
         // Broadcast members_updated if we discovered new members
-        const configMemberCount = config.members?.length || 0;
-        if (team.members.length > configMemberCount + 1) { // +1 for user
+        const newMemberCount = team.members.length;
+        console.log(`[DataSync] Member count: existing=${existingMemberCount}, new=${newMemberCount}`);
+        if (newMemberCount > existingMemberCount) {
+            console.log(`[DataSync] New members discovered, broadcasting members_updated for ${teamName}`);
             this.broadcastMembersUpdated(teamName, team.members);
         }
         // Sync existing messages (pass instance and project info)

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.27](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.26...v0.3.27) (2026-03-28)
+
+
+### Bug Fixes
+
+* **成员更新广播**: 修复成员更新广播条件，比较数据库中的成员数量而非 config 中的数量
+
 ### [0.3.26](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.25...v0.3.26) (2026-03-28)
 
 
