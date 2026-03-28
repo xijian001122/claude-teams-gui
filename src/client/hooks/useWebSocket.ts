@@ -153,6 +153,14 @@ export function useWebSocket() {
               task: data.task
             });
           }
+
+          if (data.type === 'team_added' && data.team) {
+            setLastMessage({
+              timestamp: Date.now(),
+              type: data.type,
+              team: data.team.name
+            });
+          }
         } catch (err) {
           console.error('[WebSocket] Failed to parse message:', err);
         }

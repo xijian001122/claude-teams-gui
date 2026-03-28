@@ -48,6 +48,10 @@ export class FileWatcherService {
       if (teamName && !teamName.startsWith('.')) {
         console.log(`[FileWatcher] New team detected: ${teamName}`);
         this.watchTeam(teamName);
+
+        // Wait a short delay for config.json to be written
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         const team = await this.dataSync.syncTeam(teamName);
 
         // Broadcast team_added event to WebSocket clients
@@ -88,6 +92,11 @@ export class FileWatcherService {
    * Watch a specific team's inboxes
    */
   private watchTeam(teamName: string): void {
+    // Prevent duplicate watchers
+    if (this.watchers.has(teamName)) {
+      return;
+    }
+
     const teamPath = join(this.claudeTeamsPath, teamName);
     const inboxesPath = join(teamPath, 'inboxes');
 
@@ -129,10 +138,15 @@ export class FileWatcherService {
       const fileName = filePath.split('/').pop() || '';
       const member = fileName.replace('.json', '');
 
-      console.log(`[FileWatcher] Inbox changed: ${teamName}/${member}`);
+      console.log(`[FileWatcher] Inbox changed: ${teamName}/${member}, file: ${filePath}`);
 
       // Sync the changed inbox
-      await this.dataSync.syncTeam(teamName);
+      try {
+        await this.dataSync.syncTeam(teamName);
+        console.log(`[FileWatcher] syncTeam completed for ${teamName}`);
+      } catch (err) {
+        console.error(`[FileWatcher] syncTeam failed for ${teamName}:`, err);
+      }
 
       // Read the latest message to check its type
       let messageType: string | undefined;
