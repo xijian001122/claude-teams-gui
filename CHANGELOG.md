@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.21](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.20...v0.3.21) (2026-03-28)
+
+
+### Bug Fixes
+
+* **schema.sql 路径**: 修复 TypeScript 编译后 schema.sql 路径不匹配问题
+
+### [0.3.20](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.19...v0.3.20) (2026-03-28)
+
+
+### Bug Fixes
+
+* **构建脚本**: 添加 schema.sql 复制到 dist 目录
+
 ### [0.3.19](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.17...v0.3.19) (2026-03-28)
 
 
