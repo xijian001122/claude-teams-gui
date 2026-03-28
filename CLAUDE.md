@@ -2,9 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Version: v0.3.19
+## Current Version: v0.3.20
 
 **最新修复** (2026-03-28):
+- schema.sql 未复制到 dist 目录导致数据库初始化失败
 - Windows 路径解析 bug (使用 `path.basename()`)
 - 时区显示 (`/health` 返回本地时间)
 - 数据库初始化 (`ensureReady()` 检查)
