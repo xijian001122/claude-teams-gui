@@ -104,7 +104,24 @@ export class FileWatcherService {
         this.teamInstances.set(teamName, currentInstance);
         // Only watch inbox if it exists
         if (!existsSync(inboxesPath)) {
-            console.log(`[FileWatcher] Inbox directory does not exist yet for ${teamName}, skipping watcher`);
+            console.log(`[FileWatcher] Inbox directory does not exist yet for ${teamName}, watching team directory for inbox creation`);
+            // Watch the team directory for when inboxes is created
+            const teamDirWatcher = watch(teamPath, {
+                persistent: true,
+                ignoreInitial: true,
+                depth: 0
+            });
+            teamDirWatcher.on('addDir', async (newDirPath) => {
+                const dirName = basename(newDirPath);
+                if (dirName === 'inboxes') {
+                    console.log(`[FileWatcher] Inboxes directory created for ${teamName}, setting up inbox watcher`);
+                    teamDirWatcher.close();
+                    this.watchers.delete(`${teamName}_dir`);
+                    // Re-watch to set up inbox watcher
+                    this.watchTeam(teamName);
+                }
+            });
+            this.watchers.set(`${teamName}_dir`, teamDirWatcher);
             return;
         }
         let watcher;

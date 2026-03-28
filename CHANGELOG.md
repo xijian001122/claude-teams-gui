@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.25](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.24...v0.3.25) (2026-03-28)
+
+
+### Bug Fixes
+
+* **FileWatcher**: 新团队 inboxes 目录不存在时监听团队目录等待创建
+
 ### [0.3.24](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.23...v0.3.24) (2026-03-28)
 
 
