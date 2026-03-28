@@ -15,41 +15,64 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 版本发布检查清单
 
-**发布新版本时必须更新以下文件**:
+**⚠️ 发布新版本时必须按顺序完成以下所有步骤**:
 
-| 文件 | 字段 | 说明 |
-|------|------|------|
-| `package.json` | `version` | 主版本号 |
-| `.claude-plugin/plugin.json` | `version` | 插件版本 |
-| `.claude-plugin/marketplace.json` | `plugins[0].version` | 市场版本 |
-| `CHANGELOG.md` | 添加新版本条目 | 变更日志 |
-| `CLAUDE.md` | `Current Version` | 当前版本号 |
+### 1. 更新版本号 (4个文件)
 
-**发布流程**:
+| 文件 | 字段 | 命令/操作 |
+|------|------|---------|
+| `package.json` | `version` | `npm version patch --no-git-tag-version` |
+| `.claude-plugin/plugin.json` | `version` | 自动同步 |
+| `.claude-plugin/marketplace.json` | `plugins[0].version` | 自动同步 |
+| `CLAUDE.md` | `Current Version` | **手动更新** |
+
+### 2. 更新变更日志
+
+**CHANGELOG.md** - 在文件开头添加新版本条目:
+```markdown
+### [X.Y.Z](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.19...vX.Y.Z) (2026-MM-DD)
+
+### Bug Fixes / Features
+- 具体改动描述
+```
+
+### 3. Git 提交和标签
+
 ```bash
-# 1. 更新版本号 (所有文件同步)
-npm version patch --no-git-tag-version  # 或 minor/major
-
-# 2. 同步插件版本
-node scripts/sync-version.js
-
-# 3. 更新 CHANGELOG.md
-# 手动添加新版本条目
-
-# 4. 更新 CLAUDE.md 中的 Current Version
-
-# 5. 提交并打标签
 git add -A
 git commit -m "release: vX.Y.Z"
 git tag vX.Y.Z
 git push origin main --tags
+```
 
-# 6. 创建 GitHub Release
-gh release create vX.Y.Z --title "vX.Y.Z" --notes-file CHANGELOG.md
+### 4. 创建 GitHub Release ⚠️ 必须执行
 
-# 7. 打包
+```bash
+gh release create vX.Y.Z \
+  --title "vX.Y.Z - 简短描述" \
+  --notes "## vX.Y.Z - 类型
+
+### Fixed / Added / Changed
+- 具体改动列表
+"
+```
+
+### 5. 打包 (可选)
+
+```bash
 npm pack
 ```
+
+---
+
+**检查清单 (发布前逐项确认)**:
+- [ ] `package.json` 版本已更新
+- [ ] `CLAUDE.md` Current Version 已更新
+- [ ] `CHANGELOG.md` 已添加新版本条目
+- [ ] Git 已提交 (`git commit -m "release: vX.Y.Z"`)
+- [ ] Git 标签已创建 (`git tag vX.Y.Z`)
+- [ ] 已推送到 GitHub (`git push origin main --tags`)
+- [ ] **GitHub Release 已创建** (`gh release create ...`)
 
 ## Project Overview
 
