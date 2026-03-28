@@ -14,7 +14,7 @@ const program = new Command();
 program
   .name('claude-teams-gui')
   .description('Visual chat interface for Claude Code Teams')
-  .version('0.3.21');
+  .version('0.3.22');
 
 program
   .option('-p, --port <port>', 'Port to run on')
