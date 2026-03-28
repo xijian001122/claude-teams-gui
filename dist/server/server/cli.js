@@ -19,6 +19,15 @@ program
     .option('--headless', 'Do not open browser', true)
     .option('--no-sync', 'Disable Claude teams sync', false)
     .action(async (options) => {
+    // Global error handlers
+    process.on('unhandledRejection', (reason, promise) => {
+        console.error('[FATAL] Unhandled Rejection at:', promise, 'reason:', reason);
+        process.exit(1);
+    });
+    process.on('uncaughtException', (error) => {
+        console.error('[FATAL] Uncaught Exception:', error);
+        process.exit(1);
+    });
     try {
         // Resolve paths
         const dataDir = options.data
