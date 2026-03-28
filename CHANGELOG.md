@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.19](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.17...v0.3.19) (2026-03-28)
+
+
+### Bug Fixes
+
+* **Windows 路径解析**: 使用 `path.basename()` 替代 `split('/')` 修复 Windows 兼容性
+* **时区显示**: `/health` 端点返回本地时间
+* **数据库初始化**: 添加 `ensureReady()` 检查防止未初始化访问
+* **静默崩溃**: 添加全局错误处理器
+* **FileWatcher**: 改进 `addDir` 错误处理和延迟
+* **消息同步**: 删除错误的 `msg.from === 'user'` 过滤逻辑
+* **team_added 事件**: 添加 WebSocket 事件处理
+
 ### [0.3.17](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.15...v0.3.17) (2026-03-27)
 
 
