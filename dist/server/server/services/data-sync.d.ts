@@ -25,7 +25,11 @@ export declare class DataSyncService {
      */
     syncTeam(teamName: string): Promise<Team | null>;
     /**
-     * Extract members from config
+     * Broadcast members_updated event to WebSocket clients
+     */
+    private broadcastMembersUpdated;
+    /**
+     * Extract members from config and discover from inboxes
      */
     private extractMembers;
     /**

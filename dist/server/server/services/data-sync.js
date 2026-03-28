@@ -48,12 +48,13 @@ export class DataSyncService {
     async syncTeam(teamName) {
         const teamPath = join(this.claudeTeamsPath, teamName);
         const configPath = join(teamPath, 'config.json');
+        const backupPath = join(teamPath, 'config.backup.json');
         console.log(`[DataSync] Syncing team: ${teamName}, config path: ${configPath}`);
         if (!existsSync(configPath)) {
             console.log(`[DataSync] Config not found for team: ${teamName}`);
             return null;
         }
-        // Read team config with error handling
+        // Read team config with error handling and auto-repair
         let config;
         try {
             let configContent = readFileSync(configPath, 'utf8');
@@ -63,10 +64,30 @@ export class DataSyncService {
             }
             console.log(`[DataSync] Config content for ${teamName}: ${configContent.substring(0, 200)}...`);
             config = JSON.parse(configContent);
+            // Save backup on successful read
+            writeFileSync(backupPath, JSON.stringify(config, null, 2));
         }
         catch (parseErr) {
             console.error(`[DataSync] Failed to parse config.json for team ${teamName}:`, parseErr);
-            return null;
+            // Try to restore from backup
+            if (existsSync(backupPath)) {
+                console.log(`[DataSync] Attempting to restore from backup for ${teamName}`);
+                try {
+                    const backupContent = readFileSync(backupPath, 'utf8');
+                    config = JSON.parse(backupContent);
+                    console.log(`[DataSync] Successfully restored config from backup for ${teamName}`);
+                    // Restore the main config file
+                    writeFileSync(configPath, JSON.stringify(config, null, 2));
+                    console.log(`[DataSync] Restored config.json for ${teamName}`);
+                }
+                catch (backupErr) {
+                    console.error(`[DataSync] Failed to restore from backup for ${teamName}:`, backupErr);
+                    return null;
+                }
+            }
+            else {
+                return null;
+            }
         }
         // Extract team instance ID from directory birth time
         const teamInstance = getDirectoryBirthTime(teamPath);
@@ -83,7 +104,7 @@ export class DataSyncService {
             lastActivity: new Date().toISOString(),
             messageCount: 0,
             unreadCount: 0,
-            members: this.extractMembers(config),
+            members: await this.extractMembers(teamName, config),
             config: {
                 notificationEnabled: true
             },
@@ -92,21 +113,48 @@ export class DataSyncService {
         };
         // Save to database
         await this.db.upsertTeam(team);
+        // Broadcast members_updated if we discovered new members
+        const configMemberCount = config.members?.length || 0;
+        if (team.members.length > configMemberCount + 1) { // +1 for user
+            this.broadcastMembersUpdated(teamName, team.members);
+        }
         // Sync existing messages (pass instance and project info)
         await this.syncTeamMessages(teamName, teamInstance, sourceProject);
         return team;
     }
     /**
-     * Extract members from config
+     * Broadcast members_updated event to WebSocket clients
      */
-    extractMembers(config) {
-        const members = [];
+    broadcastMembersUpdated(teamName, members) {
+        const wsServer = this.fastify?.websocketServer;
+        if (!wsServer || !wsServer.clients) {
+            return;
+        }
+        const eventData = JSON.stringify({
+            type: 'members_updated',
+            team: teamName,
+            members
+        });
+        let sentCount = 0;
+        wsServer.clients.forEach((client) => {
+            if (client.readyState === 1) { // WebSocket.OPEN
+                client.send(eventData);
+                sentCount++;
+            }
+        });
+        console.log(`[WebSocket] Broadcasted members_updated (${teamName}) to ${sentCount} clients`);
+    }
+    /**
+     * Extract members from config and discover from inboxes
+     */
+    async extractMembers(teamName, config) {
+        const memberMap = new Map();
+        // 1. Add members from config
         if (config.members && Array.isArray(config.members)) {
             for (const m of config.members) {
                 const role = m.agentType || m.role || 'default';
-                // Use member name for avatar generation
                 const avatarKey = m.name || role;
-                members.push({
+                memberMap.set(m.name, {
                     name: m.name,
                     displayName: m.name,
                     role,
@@ -116,8 +164,30 @@ export class DataSyncService {
                 });
             }
         }
-        // Add user with consistent color
-        members.push({
+        // 2. Discover members from inboxes directory
+        const inboxesPath = join(this.claudeTeamsPath, teamName, 'inboxes');
+        if (existsSync(inboxesPath)) {
+            const { readdir } = await import('fs/promises');
+            const files = await readdir(inboxesPath);
+            const inboxFiles = files.filter(f => f.endsWith('.json'));
+            for (const file of inboxFiles) {
+                const memberName = file.replace('.json', '');
+                if (!memberMap.has(memberName)) {
+                    // Discovered member not in config
+                    memberMap.set(memberName, {
+                        name: memberName,
+                        displayName: memberName,
+                        role: 'discovered',
+                        color: generateAvatarColor(memberName),
+                        avatarLetter: extractAvatarLetter(memberName),
+                        isOnline: true
+                    });
+                    console.log(`[DataSync] Discovered new member from inbox: ${memberName}`);
+                }
+            }
+        }
+        // 3. Add user with consistent color
+        memberMap.set('user', {
             name: 'user',
             displayName: 'User',
             role: 'user',
@@ -125,7 +195,7 @@ export class DataSyncService {
             avatarLetter: extractAvatarLetter('user'),
             isOnline: true
         });
-        return members;
+        return Array.from(memberMap.values());
     }
     /**
      * Sync messages from all inboxes
