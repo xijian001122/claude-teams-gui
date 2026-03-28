@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.26](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.25...v0.3.26) (2026-03-28)
+
+
+### Features
+
+* **成员发现**: 自动从 inboxes 目录发现新成员
+* **成员更新广播**: 当发现新成员时广播 `members_updated` WebSocket 事件
+
 ### [0.3.25](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.24...v0.3.25) (2026-03-28)
 
 

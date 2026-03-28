@@ -136,6 +136,17 @@ export function App() {
       loadCrossTeamTargets();
     }
 
+    // Handle members updated event
+    if (lastMessage.type === 'members_updated' && lastMessage.team && lastMessage.members) {
+      console.log('[App] Members updated for team:', lastMessage.team);
+      // Update the team's members in state
+      setTeams(prev => prev.map(t =>
+        t.name === lastMessage.team
+          ? { ...t, members: lastMessage.members }
+          : t
+      ));
+    }
+
     // Handle task created event
     if (lastMessage.type === 'task_created' && lastMessage.task && lastMessage.team) {
       console.log('[App] Task created:', lastMessage.task.id, 'for team:', lastMessage.team);
