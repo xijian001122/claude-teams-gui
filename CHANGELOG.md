@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.28](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.27...v0.3.28) (2026-03-28)
+
+
+### Bug Fixes
+
+* **发送消息到新成员**: 当成员的 inbox 文件不存在时自动创建，确保消息能正确发送
+
 ### [0.3.27](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.26...v0.3.27) (2026-03-28)
 
 

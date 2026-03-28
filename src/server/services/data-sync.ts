@@ -546,20 +546,30 @@ export class DataSyncService {
    * Write message to Claude's inbox file
    */
   private async writeToClaudeInbox(teamName: string, member: string, message: Message): Promise<void> {
-    const inboxPath = join(this.claudeTeamsPath, teamName, 'inboxes', `${member}.json`);
+    const inboxesDir = join(this.claudeTeamsPath, teamName, 'inboxes');
+    const inboxPath = join(inboxesDir, `${member}.json`);
 
-    // Only write if the inbox exists
-    if (!existsSync(inboxPath)) {
-      return;
+    // Ensure inboxes directory exists
+    if (!existsSync(inboxesDir)) {
+      mkdirSync(inboxesDir, { recursive: true });
+    }
+
+    // Create inbox file if it doesn't exist
+    let messages: any[] = [];
+    if (existsSync(inboxPath)) {
+      try {
+        const content = readFileSync(inboxPath, 'utf8');
+        messages = JSON.parse(content);
+        if (!Array.isArray(messages)) {
+          messages = [];
+        }
+      } catch (err) {
+        console.error(`[DataSync] Error reading inbox ${member}, creating new:`, err);
+        messages = [];
+      }
     }
 
     try {
-      const messages = JSON.parse(readFileSync(inboxPath, 'utf8'));
-
-      if (!Array.isArray(messages)) {
-        return;
-      }
-
       messages.push({
         from: 'user',
         text: message.content,
@@ -569,6 +579,7 @@ export class DataSyncService {
       });
 
       writeFileSync(inboxPath, JSON.stringify(messages, null, 2));
+      console.log(`[DataSync] Wrote message to inbox: ${member}`);
     } catch (err) {
       console.error(`[DataSync] Error writing to inbox ${member}:`, err);
     }
