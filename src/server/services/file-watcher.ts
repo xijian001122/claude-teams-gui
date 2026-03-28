@@ -1,5 +1,5 @@
 import { watch, FSWatcher } from 'chokidar';
-import { join } from 'path';
+import { join, basename } from 'path';
 import { readFileSync, existsSync } from 'fs';
 import type { DataSyncService } from './data-sync';
 import { getDirectoryBirthTime, extractProjectFromCwd } from '../utils/file-stats';
@@ -44,7 +44,7 @@ export class FileWatcherService {
     });
 
     teamsWatcher.on('addDir', async (path) => {
-      const teamName = path.split('/').pop();
+      const teamName = basename(path);
       if (teamName && !teamName.startsWith('.')) {
         console.log(`[FileWatcher] New team detected: ${teamName}`);
 
@@ -62,7 +62,7 @@ export class FileWatcherService {
     });
 
     teamsWatcher.on('unlinkDir', (path) => {
-      const teamName = path.split('/').pop();
+      const teamName = basename(path);
       if (teamName) {
         console.log(`[FileWatcher] Team deleted: ${teamName}`);
         this.unwatchTeam(teamName);
