@@ -63,3 +63,4 @@ Thumbs.db
 # Claude settings (contains sensitive tokens)
 .claude/settings.json
 .claude/settings-*.json
+*.tgz
