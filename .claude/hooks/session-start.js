@@ -5,13 +5,25 @@
  * 功能：显示项目状态、Git 分支、待办事项、快捷命令
  * 构建要在对话中显示的消息
  */
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
+// 日志函数
+function log(level, message) {
+  const timestamp = new Date().toISOString();
+  const logMsg = `[${timestamp}] [${level}] ${message}`;
+  console.error(logMsg); // 输出到 stderr 以便捕获
+}
 
 function buildSessionMessage() {
   let msg = '';
+
+  // 记录启动信息
+  log('INFO', 'Session-start hook executing');
+  log('INFO', `Platform: ${os.platform()}, Arch: ${os.arch()}`);
+  log('INFO', `Node: ${process.version}, CWD: ${process.cwd()}`);
 
   // 1. 获取当前时间
   const now = new Date();
