@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.24](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.23...v0.3.24) (2026-03-28)
+
+
+### Bug Fixes
+
+* **config.json 解析**: 添加错误处理防止损坏的配置文件导致服务崩溃
+* 添加调试日志输出 config 路径
+
 ### [0.3.23](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.22...v0.3.23) (2026-03-28)
 
 

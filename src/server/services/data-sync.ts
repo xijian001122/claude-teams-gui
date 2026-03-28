@@ -65,12 +65,23 @@ export class DataSyncService {
     const teamPath = join(this.claudeTeamsPath, teamName);
     const configPath = join(teamPath, 'config.json');
 
+    console.log(`[DataSync] Syncing team: ${teamName}, config path: ${configPath}`);
+
     if (!existsSync(configPath)) {
+      console.log(`[DataSync] Config not found for team: ${teamName}`);
       return null;
     }
 
-    // Read team config
-    const config = JSON.parse(readFileSync(configPath, 'utf8'));
+    // Read team config with error handling
+    let config: any;
+    try {
+      const configContent = readFileSync(configPath, 'utf8');
+      console.log(`[DataSync] Config content for ${teamName}: ${configContent.substring(0, 200)}...`);
+      config = JSON.parse(configContent);
+    } catch (parseErr) {
+      console.error(`[DataSync] Failed to parse config.json for team ${teamName}:`, parseErr);
+      return null;
+    }
 
     // Extract team instance ID from directory birth time
     const teamInstance = getDirectoryBirthTime(teamPath);
