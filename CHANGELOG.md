@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file. See [standa
 ### Bug Fixes
 
 * **FileWatcher**: 新团队 inboxes 目录不存在时监听团队目录等待创建
+* **config.json 解析**: 移除 BOM 字符防止 JSON 解析失败
 
 ### [0.3.24](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.23...v0.3.24) (2026-03-28)
 

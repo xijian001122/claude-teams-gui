@@ -75,7 +75,11 @@ export class DataSyncService {
     // Read team config with error handling
     let config: any;
     try {
-      const configContent = readFileSync(configPath, 'utf8');
+      let configContent = readFileSync(configPath, 'utf8');
+      // Remove BOM if present
+      if (configContent.charCodeAt(0) === 0xFEFF) {
+        configContent = configContent.slice(1);
+      }
       console.log(`[DataSync] Config content for ${teamName}: ${configContent.substring(0, 200)}...`);
       config = JSON.parse(configContent);
     } catch (parseErr) {
