@@ -3,6 +3,7 @@ import { join } from 'path';
 import { existsSync, mkdirSync, readFileSync } from 'fs';
 export class DatabaseService {
     db;
+    ready = false;
     constructor(dataDir) {
         // Ensure data directory exists
         if (!existsSync(dataDir)) {
@@ -29,11 +30,17 @@ export class DatabaseService {
                 }
                 else {
                     console.log('[DB] Schema initialized');
+                    this.ready = true;
                 }
             });
         }
         catch (err) {
             console.error('[DB] Failed to read schema file:', err);
+        }
+    }
+    ensureReady() {
+        if (!this.ready) {
+            console.warn('[DB] Database not ready, operation may fail');
         }
     }
     // Message operations
@@ -257,6 +264,7 @@ export class DatabaseService {
         });
     }
     getTeams(status, acceptsCrossTeamMessages) {
+        this.ensureReady();
         return new Promise((resolve, reject) => {
             let sql = 'SELECT * FROM teams';
             const params = [];

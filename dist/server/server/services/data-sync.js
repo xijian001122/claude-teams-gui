@@ -151,13 +151,14 @@ export class DataSyncService {
             const newMessages = [];
             for (let i = 0; i < messages.length; i++) {
                 const msg = messages[i];
-                // Skip messages that originated from user (already saved via API)
-                if (msg.from === 'user') {
-                    continue;
-                }
+                // Note: We don't skip user messages here because they might be written
+                // directly to inbox files by external systems (like Claude Code CLI).
+                // The insertMessageIfNew function will handle duplicates by ID.
                 try {
                     const message = this.convertToMessage(teamName, member, i, msg, teamInstance, sourceProject);
+                    console.log(`[DataSync] Processing message ${i} from ${member}: id=${message.id}, from=${message.from}`);
                     const inserted = await this.db.insertMessageIfNew(message);
+                    console.log(`[DataSync] Insert result for message ${i}: inserted=${inserted}`);
                     if (inserted) {
                         synced++;
                         newMessages.push(message);
@@ -168,6 +169,7 @@ export class DataSyncService {
                 }
             }
             // Broadcast new messages to WebSocket clients
+            console.log(`[DataSync] newMessages count: ${newMessages.length}`);
             if (newMessages.length > 0) {
                 this.broadcastNewMessages(teamName, newMessages);
             }
@@ -236,8 +238,10 @@ export class DataSyncService {
     broadcastNewMessages(teamName, messages) {
         const wsServer = this.fastify?.websocketServer;
         if (!wsServer || !wsServer.clients) {
+            console.log('[DataSync] WebSocket server not available for broadcast');
             return;
         }
+        console.log(`[DataSync] Broadcasting ${messages.length} messages, clients: ${wsServer.clients.size}`);
         for (const message of messages) {
             const broadcastData = JSON.stringify({ type: 'new_message', team: teamName, message });
             let sentCount = 0;

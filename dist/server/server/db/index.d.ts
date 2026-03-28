@@ -1,8 +1,10 @@
 import type { Message, Team } from '@shared/types';
 export declare class DatabaseService {
     private db;
+    private ready;
     constructor(dataDir: string);
     private initSchemaSync;
+    private ensureReady;
     insertMessage(message: Message & {
         team?: string;
     }): Promise<void>;

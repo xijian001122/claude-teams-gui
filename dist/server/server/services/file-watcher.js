@@ -1,5 +1,5 @@
 import { watch } from 'chokidar';
-import { join } from 'path';
+import { join, basename } from 'path';
 import { readFileSync, existsSync } from 'fs';
 import { getDirectoryBirthTime, extractProjectFromCwd } from '../utils/file-stats';
 export class FileWatcherService {
@@ -30,19 +30,21 @@ export class FileWatcherService {
             depth: 0
         });
         teamsWatcher.on('addDir', async (path) => {
-            const teamName = path.split('/').pop();
+            const teamName = basename(path);
             if (teamName && !teamName.startsWith('.')) {
                 console.log(`[FileWatcher] New team detected: ${teamName}`);
-                this.watchTeam(teamName);
+                // Wait a short delay for config.json to be written
+                await new Promise(resolve => setTimeout(resolve, 200));
+                // Sync team first, then set up watcher
                 const team = await this.dataSync.syncTeam(teamName);
-                // Broadcast team_added event to WebSocket clients
                 if (team) {
+                    this.watchTeam(teamName);
                     this.broadcastTeamAdded(team);
                 }
             }
         });
         teamsWatcher.on('unlinkDir', (path) => {
-            const teamName = path.split('/').pop();
+            const teamName = basename(path);
             if (teamName) {
                 console.log(`[FileWatcher] Team deleted: ${teamName}`);
                 this.unwatchTeam(teamName);
@@ -69,6 +71,10 @@ export class FileWatcherService {
      * Watch a specific team's inboxes
      */
     watchTeam(teamName) {
+        // Prevent duplicate watchers
+        if (this.watchers.has(teamName)) {
+            return;
+        }
         const teamPath = join(this.claudeTeamsPath, teamName);
         const inboxesPath = join(teamPath, 'inboxes');
         // Track team instance
@@ -96,16 +102,34 @@ export class FileWatcherService {
         }
         // Update tracked instance
         this.teamInstances.set(teamName, currentInstance);
-        const watcher = watch(`${inboxesPath}/*.json`, {
-            persistent: true,
-            ignoreInitial: true
-        });
+        // Only watch inbox if it exists
+        if (!existsSync(inboxesPath)) {
+            console.log(`[FileWatcher] Inbox directory does not exist yet for ${teamName}, skipping watcher`);
+            return;
+        }
+        let watcher;
+        try {
+            watcher = watch(`${inboxesPath}/*.json`, {
+                persistent: true,
+                ignoreInitial: true
+            });
+        }
+        catch (err) {
+            console.error(`[FileWatcher] Failed to create watcher for ${teamName}:`, err);
+            return;
+        }
         watcher.on('change', async (filePath) => {
             const fileName = filePath.split('/').pop() || '';
             const member = fileName.replace('.json', '');
-            console.log(`[FileWatcher] Inbox changed: ${teamName}/${member}`);
+            console.log(`[FileWatcher] Inbox changed: ${teamName}/${member}, file: ${filePath}`);
             // Sync the changed inbox
-            await this.dataSync.syncTeam(teamName);
+            try {
+                await this.dataSync.syncTeam(teamName);
+                console.log(`[FileWatcher] syncTeam completed for ${teamName}`);
+            }
+            catch (err) {
+                console.error(`[FileWatcher] syncTeam failed for ${teamName}:`, err);
+            }
             // Read the latest message to check its type
             let messageType;
             try {

@@ -5,6 +5,7 @@ import type { Message, Team } from '@shared/types';
 
 export class DatabaseService {
   private db: sqlite3.Database;
+  private ready = false;
 
   constructor(dataDir: string) {
 
@@ -35,10 +36,17 @@ export class DatabaseService {
           console.error('[DB] Failed to initialize schema:', err);
         } else {
           console.log('[DB] Schema initialized');
+          this.ready = true;
         }
       });
     } catch (err) {
       console.error('[DB] Failed to read schema file:', err);
+    }
+  }
+
+  private ensureReady(): void {
+    if (!this.ready) {
+      console.warn('[DB] Database not ready, operation may fail');
     }
   }
 
@@ -330,6 +338,7 @@ export class DatabaseService {
   }
 
   getTeams(status?: 'active' | 'archived', acceptsCrossTeamMessages?: boolean): Promise<Team[]> {
+    this.ensureReady();
     return new Promise((resolve, reject) => {
       let sql = 'SELECT * FROM teams';
       const params: (string | number)[] = [];

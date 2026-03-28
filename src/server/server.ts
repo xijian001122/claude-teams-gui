@@ -313,7 +313,7 @@ export async function createServer(options: ServerOptions) {
   fastify.get('/health', async () => {
     return {
       status: 'ok',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
     };
   });
 

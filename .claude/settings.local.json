@@ -101,7 +101,8 @@
       "Bash(tar -tzf /tmp/claude-teams-gui-0.3.1.tgz)",
       "Bash(tar -tzf /tmp/claude-teams-gui-0.3.3.tgz)",
       "Bash(git pull:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(xargs -r kill)"
     ]
   },
   "hooks": {

@@ -270,7 +270,7 @@ export async function createServer(options) {
     fastify.get('/health', async () => {
         return {
             status: 'ok',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
         };
     });
     // Restart handler for settings route
