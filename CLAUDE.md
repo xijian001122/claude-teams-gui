@@ -2,6 +2,55 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Current Version: v0.3.19
+
+**最新修复** (2026-03-28):
+- Windows 路径解析 bug (使用 `path.basename()`)
+- 时区显示 (`/health` 返回本地时间)
+- 数据库初始化 (`ensureReady()` 检查)
+- 全局错误处理 (防止静默崩溃)
+- `team_added` WebSocket 事件处理
+- FileWatcher 错误处理和延迟
+- 消息同步过滤逻辑
+
+## 版本发布检查清单
+
+**发布新版本时必须更新以下文件**:
+
+| 文件 | 字段 | 说明 |
+|------|------|------|
+| `package.json` | `version` | 主版本号 |
+| `.claude-plugin/plugin.json` | `version` | 插件版本 |
+| `.claude-plugin/marketplace.json` | `plugins[0].version` | 市场版本 |
+| `CHANGELOG.md` | 添加新版本条目 | 变更日志 |
+| `CLAUDE.md` | `Current Version` | 当前版本号 |
+
+**发布流程**:
+```bash
+# 1. 更新版本号 (所有文件同步)
+npm version patch --no-git-tag-version  # 或 minor/major
+
+# 2. 同步插件版本
+node scripts/sync-version.js
+
+# 3. 更新 CHANGELOG.md
+# 手动添加新版本条目
+
+# 4. 更新 CLAUDE.md 中的 Current Version
+
+# 5. 提交并打标签
+git add -A
+git commit -m "release: vX.Y.Z"
+git tag vX.Y.Z
+git push origin main --tags
+
+# 6. 创建 GitHub Release
+gh release create vX.Y.Z --title "vX.Y.Z" --notes-file CHANGELOG.md
+
+# 7. 打包
+npm pack
+```
+
 ## Project Overview
 
 Claude Agent GUI is a visual chat interface for Claude Code Teams - a WeChat-like messaging experience for AI agent collaboration. It provides real-time chat, team management, @ mentions, and desktop notifications.
