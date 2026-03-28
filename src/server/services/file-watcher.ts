@@ -47,15 +47,15 @@ export class FileWatcherService {
       const teamName = path.split('/').pop();
       if (teamName && !teamName.startsWith('.')) {
         console.log(`[FileWatcher] New team detected: ${teamName}`);
-        this.watchTeam(teamName);
 
         // Wait a short delay for config.json to be written
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
 
+        // Sync team first, then set up watcher
         const team = await this.dataSync.syncTeam(teamName);
 
-        // Broadcast team_added event to WebSocket clients
         if (team) {
+          this.watchTeam(teamName);
           this.broadcastTeamAdded(team);
         }
       }
@@ -129,10 +129,22 @@ export class FileWatcherService {
     // Update tracked instance
     this.teamInstances.set(teamName, currentInstance);
 
-    const watcher = watch(`${inboxesPath}/*.json`, {
-      persistent: true,
-      ignoreInitial: true
-    });
+    // Only watch inbox if it exists
+    if (!existsSync(inboxesPath)) {
+      console.log(`[FileWatcher] Inbox directory does not exist yet for ${teamName}, skipping watcher`);
+      return;
+    }
+
+    let watcher: ReturnType<typeof watch>;
+    try {
+      watcher = watch(`${inboxesPath}/*.json`, {
+        persistent: true,
+        ignoreInitial: true
+      });
+    } catch (err) {
+      console.error(`[FileWatcher] Failed to create watcher for ${teamName}:`, err);
+      return;
+    }
 
     watcher.on('change', async (filePath) => {
       const fileName = filePath.split('/').pop() || '';
