@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.29](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.28...v0.3.29) (2026-03-30)
+
+### Features
+* **成员会话上下文**: 新增 MemberConversationPanel 组件，支持查看成员实时对话历史
+* **SubagentStart Hook**: 自动注册子 agent session 到团队目录
+* **Session Reader 服务**: 解析 JSONL 对话文件，提供成员对话 API
+* **Member Session API**: GET session 和 conversation 两个端点
+* **结构化日志**: 重构日志系统为 log-factory，支持模块化日志和文件输出
+
+### Bug Fixes
+* **归档空目录**: 修复 archiveTeamData 只创建空目录的问题，现在导出 team.json + messages.json
+* **归档清理**: 自动清理现有空归档目录，永久删除时同步删除归档文件
+
 ### [0.3.28](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.27...v0.3.28) (2026-03-28)
 
 
