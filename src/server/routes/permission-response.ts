@@ -3,6 +3,10 @@ import { join } from 'path';
 import { readFileSync, existsSync, writeFileSync } from 'fs';
 import type { DatabaseService } from '../db';
 import type { ApiResponse, PermissionResponseBody } from '@shared/types';
+import { createLogger } from '../services/log-factory';
+
+// Module logger
+const log = createLogger({ module: 'PermissionResponse', shorthand: 's.r.perm' });
 
 export async function permissionResponseRoutes(
   fastify: FastifyInstance,
@@ -97,12 +101,12 @@ export async function permissionResponseRoutes(
       // Write back to file
       writeFileSync(inboxPath, JSON.stringify(messages, null, 2));
 
-      console.log(`[PermissionResponse] Written to ${body.agent_id}'s inbox: ${body.approve ? 'approved' : 'rejected'} ${body.request_id}`);
+      log.info(`Written to ${body.agent_id}'s inbox: ${body.approve ? 'approved' : 'rejected'} ${body.request_id}`);
 
       // Update the permission_request message status in the database
       const newStatus = body.approve ? 'approved' : 'rejected';
       await db.updatePermissionRequestStatus(name, body.request_id, newStatus);
-      console.log(`[PermissionResponse] Updated database status to ${newStatus} for request ${body.request_id}`);
+      log.debug(`Updated database status to ${newStatus} for request ${body.request_id}`);
 
       reply.status(201);
       return {
@@ -114,7 +118,7 @@ export async function permissionResponseRoutes(
         }
       } as ApiResponse<{ request_id: string; approve: boolean; timestamp: string }>;
     } catch (err) {
-      console.error('[PermissionResponse] Error:', err);
+      log.error(`Error processing permission response: ${err}`);
       reply.status(500);
       return {
         success: false,

@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
 import { SettingsPage } from './components/SettingsPage';
 import { TaskPanel } from './components/TaskPanel';
+import { MemberConversationPanel } from './components/MemberConversationPanel';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useTheme } from './hooks/useTheme';
 import type { Team, Message, ConfigChange, MemberStatusInfo, Task } from '@shared/types';
@@ -24,6 +25,9 @@ export function App() {
 
   // Tasks state for real-time updates
   const [tasks, setTasks] = useState<Map<string, Task[]>>(new Map());
+
+  // Member context panel state
+  const [viewingMemberContext, setViewingMemberContext] = useState<string | null>(null);
 
   const { theme, toggleTheme } = useTheme();
   const { lastMessage, connected } = useWebSocket();
@@ -279,6 +283,10 @@ export function App() {
     console.log('Avatar clicked:', memberName);
   };
 
+  const handleViewMemberContext = (memberName: string) => {
+    setViewingMemberContext(memberName);
+  };
+
   const handlePermissionResponse = async (requestId: string, approve: boolean, agentId: string) => {
     if (!currentTeam) return;
 
@@ -374,11 +382,21 @@ export function App() {
           theme={theme}
           onToggleTheme={toggleTheme}
           onPermissionResponse={handlePermissionResponse}
+          onViewMemberContext={handleViewMemberContext}
         />
       )}
 
       {/* Task Panel */}
       <TaskPanel currentTeam={currentTeam} tasks={tasks.get(currentTeam || '') || []} />
+
+      {/* Member Conversation Panel */}
+      {viewingMemberContext && currentTeam && (
+        <MemberConversationPanel
+          teamName={currentTeam}
+          memberName={viewingMemberContext}
+          onClose={() => setViewingMemberContext(null)}
+        />
+      )}
     </div>
   );
 }

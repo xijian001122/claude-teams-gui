@@ -4,6 +4,11 @@ import { readFileSync, existsSync } from 'fs';
 import type { DataSyncService } from './data-sync';
 import { getDirectoryBirthTime, extractProjectFromCwd } from '../utils/file-stats';
 import type { FastifyInstance } from 'fastify';
+import { createLogger } from './log-factory';
+
+// Module loggers
+const log = createLogger({ module: 'FileWatcher', shorthand: 's.s.file-watcher' });
+const wsLog = createLogger({ module: 'WebSocket', shorthand: 's.ws' });
 
 export interface FileWatcherOptions {
   claudeTeamsPath: string;
@@ -32,7 +37,7 @@ export class FileWatcherService {
    */
   async start(): Promise<void> {
     if (!this.claudeTeamsPath) {
-      console.log('[FileWatcher] No Claude teams path configured');
+      log.warn('No Claude teams path configured');
       return;
     }
 
@@ -46,7 +51,7 @@ export class FileWatcherService {
     teamsWatcher.on('addDir', async (path) => {
       const teamName = basename(path);
       if (teamName && !teamName.startsWith('.')) {
-        console.log(`[FileWatcher] New team detected: ${teamName}`);
+        log.info(`New team detected: ${teamName}`);
 
         // Wait a short delay for config.json to be written
         await new Promise(resolve => setTimeout(resolve, 200));
@@ -64,7 +69,7 @@ export class FileWatcherService {
     teamsWatcher.on('unlinkDir', (path) => {
       const teamName = basename(path);
       if (teamName) {
-        console.log(`[FileWatcher] Team deleted: ${teamName}`);
+        log.info(`Team deleted: ${teamName}`);
         this.unwatchTeam(teamName);
         this.dataSync.handleTeamDeleted(teamName);
       }
@@ -85,7 +90,7 @@ export class FileWatcherService {
       // Directory doesn't exist yet
     }
 
-    console.log('[FileWatcher] Started watching');
+    log.info('Started watching');
   }
 
   /**
@@ -106,7 +111,7 @@ export class FileWatcherService {
 
     if (oldInstance && oldInstance !== currentInstance) {
       // Team directory was recreated - instance changed!
-      console.log(`[FileWatcher] Team instance changed: ${teamName} (${oldInstance} -> ${currentInstance})`);
+      log.info(`Team instance changed: ${teamName} (${oldInstance} -> ${currentInstance})`);
 
       // Extract source project from config
       let sourceProject: string | undefined;
@@ -118,7 +123,7 @@ export class FileWatcherService {
             sourceProject = extractProjectFromCwd(config.members[0].cwd);
           }
         } catch (err) {
-          console.error('[FileWatcher] Error reading team config:', err);
+          log.error(`Error reading team config: ${err}`);
         }
       }
 
@@ -131,7 +136,7 @@ export class FileWatcherService {
 
     // Only watch inbox if it exists
     if (!existsSync(inboxesPath)) {
-      console.log(`[FileWatcher] Inbox directory does not exist yet for ${teamName}, watching team directory for inbox creation`);
+      log.debug(`Inbox directory does not exist yet for ${teamName}, watching team directory for inbox creation`);
 
       // Watch the team directory for when inboxes is created
       const teamDirWatcher = watch(teamPath, {
@@ -143,7 +148,7 @@ export class FileWatcherService {
       teamDirWatcher.on('addDir', async (newDirPath) => {
         const dirName = basename(newDirPath);
         if (dirName === 'inboxes') {
-          console.log(`[FileWatcher] Inboxes directory created for ${teamName}, setting up inbox watcher`);
+          log.info(`Inboxes directory created for ${teamName}, setting up inbox watcher`);
           teamDirWatcher.close();
           this.watchers.delete(`${teamName}_dir`);
           // Re-watch to set up inbox watcher
@@ -162,7 +167,7 @@ export class FileWatcherService {
         ignoreInitial: true
       });
     } catch (err) {
-      console.error(`[FileWatcher] Failed to create watcher for ${teamName}:`, err);
+      log.error(`Failed to create watcher for ${teamName}: ${err}`);
       return;
     }
 
@@ -170,14 +175,14 @@ export class FileWatcherService {
       const fileName = basename(filePath);
       const member = fileName.replace('.json', '');
 
-      console.log(`[FileWatcher] Inbox changed: ${teamName}/${member}, file: ${filePath}`);
+      log.debug(`Inbox changed: ${teamName}/${member}`);
 
       // Sync the changed inbox
       try {
         await this.dataSync.syncTeam(teamName);
-        console.log(`[FileWatcher] syncTeam completed for ${teamName}`);
+        log.trace(`syncTeam completed for ${teamName}`);
       } catch (err) {
-        console.error(`[FileWatcher] syncTeam failed for ${teamName}:`, err);
+        log.error(`syncTeam failed for ${teamName}: ${err}`);
       }
 
       // Read the latest message to check its type
@@ -203,7 +208,7 @@ export class FileWatcherService {
           }
         }
       } catch (err) {
-        console.error('[FileWatcher] Error reading inbox:', err);
+        log.error(`Error reading inbox: ${err}`);
       }
 
       // Update member activity status
@@ -253,7 +258,7 @@ export class FileWatcherService {
       }
     });
 
-    console.log(`[WebSocket] Broadcasted team_instance_changed to ${sentCount} clients`);
+    wsLog.debug(`Broadcasted team_instance_changed to ${sentCount} clients`);
   }
 
   /**
@@ -278,7 +283,7 @@ export class FileWatcherService {
       }
     });
 
-    console.log(`[WebSocket] Broadcasted team_added (${team.name}) to ${sentCount} clients`);
+    wsLog.debug(`Broadcasted team_added (${team.name}) to ${sentCount} clients`);
   }
 
   /**
@@ -287,7 +292,7 @@ export class FileWatcherService {
   stop(): void {
     for (const [name, watcher] of this.watchers) {
       watcher.close();
-      console.log(`[FileWatcher] Stopped watching: ${name}`);
+      log.debug(`Stopped watching: ${name}`);
     }
     this.watchers.clear();
   }

@@ -6,6 +6,10 @@ import { homedir } from 'os';
 import type { ApiResponse, Task, TaskStatus } from '@shared/types';
 import { TaskStorageService } from '../services/task-storage';
 import { SessionSummaryService } from '../services/session-summary';
+import { createLogger } from '../services/log-factory';
+
+// Module logger
+const log = createLogger({ module: 'Tasks', shorthand: 's.r.tasks' });
 
 /**
  * Read tasks from ~/.claude/tasks/<team-name>/ directory (legacy function)
@@ -47,7 +51,7 @@ async function readTasksFromFiles(teamName: string): Promise<Task[]> {
         }
       } catch (parseError) {
         // Skip invalid JSON files
-        console.error(`[Tasks] Failed to parse task file ${file}:`, parseError);
+        log.error(`Failed to parse task file ${file}: ${parseError}`);
       }
     }
 
@@ -60,7 +64,7 @@ async function readTasksFromFiles(teamName: string): Promise<Task[]> {
 
     return tasks;
   } catch (error) {
-    console.error(`[Tasks] Failed to read tasks directory:`, error);
+    log.error(`Failed to read tasks directory: ${error}`);
     return [];
   }
 }
@@ -192,7 +196,7 @@ export async function tasksRoutes(fastify: FastifyInstance) {
         data: task
       } as ApiResponse<Task>;
     } catch (err) {
-      console.error(`[Tasks] Error creating task:`, err);
+      log.error(`Error creating task: ${err}`);
       reply.status(500);
       return {
         success: false,
@@ -248,7 +252,7 @@ export async function tasksRoutes(fastify: FastifyInstance) {
         data: task
       } as ApiResponse<Task>;
     } catch (err) {
-      console.error(`[Tasks] Error updating task ${id}:`, err);
+      log.error(`Error updating task ${id}: ${err}`);
       reply.status(500);
       return {
         success: false,
@@ -281,7 +285,7 @@ export async function tasksRoutes(fastify: FastifyInstance) {
         success: true
       } as ApiResponse<void>;
     } catch (err) {
-      console.error(`[Tasks] Error deleting task ${id}:`, err);
+      log.error(`Error deleting task ${id}: ${err}`);
       reply.status(500);
       return {
         success: false,
@@ -305,7 +309,7 @@ export async function tasksRoutes(fastify: FastifyInstance) {
         data: { filePath }
       } as ApiResponse<{ filePath: string }>;
     } catch (err) {
-      console.error(`[Tasks] Error generating session summary for ${name}:`, err);
+      log.error(`Error generating session summary for ${name}: ${err}`);
       reply.status(500);
       return {
         success: false,
@@ -361,7 +365,7 @@ export async function globalTasksRoutes(fastify: FastifyInstance) {
                   }
                 }
               }
-            } catch (e) {
+            } catch {
               // Skip inaccessible directories
             }
           }
@@ -382,7 +386,7 @@ export async function globalTasksRoutes(fastify: FastifyInstance) {
         }
       } as ApiResponse<{ tasks: Array<Task & { teamName: string }>; counts: TaskCounts }>;
     } catch (err) {
-      console.error('[Tasks] Error fetching global tasks:', err);
+      log.error(`Error fetching global tasks: ${err}`);
       reply.status(500);
       return {
         success: false,
@@ -413,11 +417,11 @@ async function getAllTasksForCounts(): Promise<Task[]> {
           const tasks = await readTasksFromFiles(teamName);
           allTasks.push(...tasks);
         }
-      } catch (e) {
+      } catch {
         // Skip inaccessible directories
       }
     }
-  } catch (e) {
+  } catch {
     // Ignore errors
   }
 

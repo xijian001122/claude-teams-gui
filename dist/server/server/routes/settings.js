@@ -1,3 +1,6 @@
+import { createLogger } from '../services/log-factory';
+// Module logger
+const log = createLogger({ module: 'Settings', shorthand: 's.r.settings' });
 export async function settingsRoutes(fastify, options) {
     const { configService, onRestart } = options;
     // GET /api/settings - Get current settings
@@ -101,7 +104,7 @@ export async function settingsRoutes(fastify, options) {
                     await onRestart();
                 }
                 catch (err) {
-                    console.error('[Settings] Restart failed:', err);
+                    log.error(`Restart failed: ${err}`);
                 }
             }, 100);
             return reply;

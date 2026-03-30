@@ -1,9 +1,14 @@
 import { FastifyInstance } from 'fastify';
+import { join } from 'path';
+import { existsSync, readdirSync, rmSync } from 'fs';
 import type { DatabaseService } from '../db';
 import type { ApiResponse, Team } from '@shared/types';
 
-export async function archiveRoutes(fastify: FastifyInstance, options: { db: DatabaseService }) {
-  const { db } = options;
+export async function archiveRoutes(
+  fastify: FastifyInstance,
+  options: { db: DatabaseService; dataDir: string }
+) {
+  const { db, dataDir } = options;
 
   // GET /api/archive - Get archived teams
   fastify.get('/', async (_request, reply) => {
@@ -83,7 +88,20 @@ export async function archiveRoutes(fastify: FastifyInstance, options: { db: Dat
         } as ApiResponse<never>;
       }
 
+      // Delete from database
       db.deleteTeam(name);
+
+      // Delete archive directories matching pattern <name>-*
+      const archiveBase = join(dataDir, 'archive');
+      if (existsSync(archiveBase)) {
+        const entries = readdirSync(archiveBase, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.isDirectory() && entry.name.startsWith(`${name}-`)) {
+            const dirPath = join(archiveBase, entry.name);
+            rmSync(dirPath, { recursive: true });
+          }
+        }
+      }
 
       return {
         success: true

@@ -6,7 +6,8 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import { spawn } from 'child_process';
 import { DatabaseService } from './db';
-import { DataSyncService, FileWatcherService, CleanupService, ConfigService, MemberStatusService, LoggerService } from './services';
+import { DataSyncService, FileWatcherService, CleanupService, ConfigService, MemberStatusService } from './services';
+import { createLogger, initLogFactory, closeLogFactory, updateLogConfig } from './services/log-factory';
 import teamRoutes from './routes/teams';
 import messageRoutes from './routes/messages';
 import archiveRoutes from './routes/archive';
@@ -14,8 +15,21 @@ import settingsRoutes from './routes/settings';
 import permissionResponseRoutes from './routes/permission-response';
 import tasksRoutes, { globalTasksRoutes } from './routes/tasks';
 import { logsRoutes, hooksRoutes } from './routes';
+import memberSessionRoutes from './routes/member-session';
 export async function createServer(options) {
     const { config, dataDir } = options;
+    // Initialize Pino logger factory first
+    const logDir = join(dataDir, 'logs');
+    initLogFactory({
+        enabled: config.logConfig?.enabled ?? true,
+        level: config.logConfig?.level ?? 'info',
+        maxSize: config.logConfig?.maxSize ?? 10,
+        maxDays: config.logConfig?.maxDays ?? 7,
+        logDir,
+        colorize: process.env.NODE_ENV !== 'production'
+    });
+    // Create module logger
+    const log = createLogger({ module: 'Server', shorthand: 's.server' });
     // Create Fastify instance
     const fastify = Fastify({
         logger: {
@@ -30,12 +44,7 @@ export async function createServer(options) {
     await fastify.register(websocket);
     // Initialize database
     const db = new DatabaseService(dataDir);
-    console.log('[Server] Database initialized');
-    // Initialize logger service
-    const logDir = join(dataDir, 'logs');
-    const loggerService = new LoggerService(logDir, config.logConfig);
-    await loggerService.init();
-    console.log('[Server] Logger service initialized');
+    log.info('Database initialized');
     // Initialize config service (but don't start watching yet)
     const configPath = join(dataDir, 'config.json');
     const configService = new ConfigService(configPath, config);
@@ -47,10 +56,12 @@ export async function createServer(options) {
         fastify
     });
     await dataSync.init();
-    console.log('[Server] Data sync initialized');
+    log.info('Data sync initialized');
     // Initialize member status service (MUST be before file watcher)
     const memberStatusService = new MemberStatusService();
-    console.log('[Server] Member status service initialized');
+    log.info('Member status service initialized');
+    // Create MemberStatus logger
+    const memberStatusLog = createLogger({ module: 'MemberStatus', shorthand: 's.mstatus' });
     // Initialize file watcher
     const fileWatcher = new FileWatcherService({
         claudeTeamsPath: config.teamsPath,
@@ -59,11 +70,11 @@ export async function createServer(options) {
         onMemberActivity: (teamName, memberName, messageType) => {
             // If it's an idle_notification, mark as idle; otherwise mark as busy
             if (messageType === 'idle_notification') {
-                console.log(`[MemberStatus] ${memberName} is now idle`);
+                memberStatusLog.info(`${memberName} is now idle`);
                 memberStatusService.markIdle(teamName, memberName);
             }
             else {
-                console.log(`[MemberStatus] ${memberName} is busy`);
+                memberStatusLog.info(`${memberName} is busy`);
                 memberStatusService.markBusy(teamName, memberName);
             }
             // Broadcast updated status to all clients
@@ -82,7 +93,7 @@ export async function createServer(options) {
         }
     });
     await fileWatcher.start();
-    console.log('[Server] File watcher started');
+    log.info('File watcher started');
     // Initialize all existing team members as offline (FileWatcher ignoreInitial doesn't detect them)
     try {
         const teams = await db.getTeams();
@@ -93,10 +104,10 @@ export async function createServer(options) {
                 }
             }
         }
-        console.log(`[Server] Initialized ${teams.length} teams with offline status`);
+        log.info(`Initialized ${teams.length} teams with offline status`);
     }
     catch (err) {
-        console.error('[Server] Error initializing team members:', err);
+        log.error(`Error initializing team members: ${err}`);
     }
     // Initialize cleanup service
     const cleanupService = new CleanupService(db, {
@@ -105,7 +116,7 @@ export async function createServer(options) {
         cleanupTime: config.cleanupTime
     });
     cleanupService.schedule();
-    console.log('[Server] Cleanup service scheduled');
+    log.info('Cleanup service scheduled');
     // Now start config watching (after cleanupService is created)
     configService.startWatching((changes) => {
         // Broadcast config changes via WebSocket
@@ -131,28 +142,31 @@ export async function createServer(options) {
                 cleanupTime: currentConfig.cleanupTime
             });
         }
-        // Update logger service if log config changed
+        // Update log factory if log config changed
         const logConfigChange = changes.find(c => c.key === 'logConfig');
         if (logConfigChange) {
-            loggerService.updateConfig(logConfigChange.newValue);
+            updateLogConfig(logConfigChange.newValue);
         }
     });
-    console.log('[Server] Config service started');
+    log.info('Config service started');
     // Register routes
     fastify.register(teamRoutes, { prefix: '/api/teams', db });
     fastify.register(messageRoutes, { prefix: '/api/teams', db, dataSync });
     fastify.register(permissionResponseRoutes, { prefix: '/api/teams', db, claudeTeamsPath: config.teamsPath });
     fastify.register(tasksRoutes, { prefix: '/api/teams' });
     fastify.register(globalTasksRoutes, { prefix: '/api' });
-    fastify.register(archiveRoutes, { prefix: '/api/archive', db });
+    fastify.register(archiveRoutes, { prefix: '/api/archive', db, dataDir });
     fastify.register(logsRoutes, { prefix: '/api/logs', configService });
     fastify.register(hooksRoutes, { prefix: '/api/hooks', fastify });
+    fastify.register(memberSessionRoutes, { prefix: '/api/teams', teamsPath: config.teamsPath });
+    // Create WebSocket logger
+    const wsLog = createLogger({ module: 'WebSocket', shorthand: 's.ws' });
     // WebSocket handler - @fastify/websocket v10 passes socket directly
     fastify.register(async (fastify) => {
         fastify.get('/ws', { websocket: true }, (socket, _req) => {
-            console.log('[WebSocket] Client connected');
+            wsLog.info('Client connected');
             if (!socket || typeof socket.on !== 'function') {
-                console.error('[WebSocket] Invalid socket object');
+                wsLog.error('Invalid socket object');
                 return;
             }
             socket.on('message', (message) => {
@@ -161,7 +175,7 @@ export async function createServer(options) {
                     switch (data.type) {
                         case 'join_team':
                             // Client joining a team room
-                            console.log(`[WebSocket] Client joined team: ${data.team}`);
+                            wsLog.info(`Client joined team: ${data.team}`);
                             // Initialize all team members as offline (they'll be updated as they have activity)
                             (async () => {
                                 try {
@@ -173,7 +187,7 @@ export async function createServer(options) {
                                     }
                                 }
                                 catch (err) {
-                                    console.error('[WebSocket] Error initializing team members:', err);
+                                    wsLog.error(`Error initializing team members: ${err}`);
                                 }
                                 // Broadcast current status
                                 const statuses = memberStatusService.getMemberStatuses(data.team);
@@ -191,7 +205,7 @@ export async function createServer(options) {
                             })();
                             break;
                         case 'leave_team':
-                            console.log(`[WebSocket] Client left team: ${data.team}`);
+                            wsLog.info(`Client left team: ${data.team}`);
                             break;
                         case 'typing':
                             // Broadcast typing indicator
@@ -209,11 +223,11 @@ export async function createServer(options) {
                             break;
                         case 'mark_read':
                             // Mark messages as read
-                            console.log(`[WebSocket] Marked read: ${data.messageId}`);
+                            wsLog.debug(`Marked read: ${data.messageId}`);
                             break;
                         case 'send_cross_team_message':
                             // Handle cross-team message via WebSocket
-                            console.log(`[WebSocket] Cross-team message from ${data.fromTeam} to ${data.toTeam}`);
+                            wsLog.info(`Cross-team message from ${data.fromTeam} to ${data.toTeam}`);
                             (async () => {
                                 try {
                                     const result = await dataSync.sendCrossTeamMessage(data.fromTeam, data.toTeam, data.content, data.contentType || 'text');
@@ -225,7 +239,7 @@ export async function createServer(options) {
                                     }
                                 }
                                 catch (err) {
-                                    console.error('[WebSocket] Error sending cross-team message:', err);
+                                    wsLog.error(`Error sending cross-team message: ${err}`);
                                     socket.send(JSON.stringify({
                                         type: 'error',
                                         error: 'Failed to send cross-team message'
@@ -236,11 +250,11 @@ export async function createServer(options) {
                     }
                 }
                 catch (err) {
-                    console.error('[WebSocket] Error handling message:', err);
+                    wsLog.error(`Error handling message: ${err}`);
                 }
             });
             socket.on('close', () => {
-                console.log('[WebSocket] Client disconnected');
+                wsLog.info('Client disconnected');
             });
         });
     });
@@ -250,7 +264,7 @@ export async function createServer(options) {
     const clientDistPath = pluginRoot
         ? join(pluginRoot, 'dist', 'client')
         : join(__dirname, '../../client');
-    console.log(`[Server] Serving frontend from ${clientDistPath}${pluginRoot ? ' (plugin)' : ' (development)'}`);
+    log.info(`Serving frontend from ${clientDistPath}${pluginRoot ? ' (plugin)' : ' (development)'}`);
     if (existsSync(clientDistPath)) {
         fastify.register(staticPlugin, {
             root: clientDistPath,
@@ -302,16 +316,16 @@ export async function createServer(options) {
     });
     // Graceful shutdown
     const shutdown = async (restart = false) => {
-        console.log('[Server] Shutting down...');
+        log.info('Shutting down...');
         fileWatcher.stop();
         configService.stopWatching();
         cleanupService.stop();
-        loggerService.destroy();
+        closeLogFactory();
         db.close();
         await fastify.close();
-        console.log('[Server] Shutdown complete');
+        log.info('Shutdown complete');
         if (restart) {
-            console.log('[Server] Restarting...');
+            log.info('Restarting...');
             // Spawn a new process, filtering out port/host args to read from config file
             const nodePath = process.execPath;
             const scriptPath = process.argv[1];
@@ -341,7 +355,7 @@ export async function createServer(options) {
     };
     process.on('SIGINT', () => shutdown(false));
     process.on('SIGTERM', () => shutdown(false));
-    return { fastify, db, dataSync, fileWatcher, cleanupService, memberStatusService, loggerService };
+    return { fastify, db, dataSync, fileWatcher, cleanupService, memberStatusService };
 }
 export default createServer;
 //# sourceMappingURL=server.js.map

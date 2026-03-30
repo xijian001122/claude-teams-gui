@@ -6,11 +6,13 @@ import { OnlineMembersPanel } from './OnlineMembersPanel';
 interface OnlineMembersTriggerProps {
   memberStatuses: MemberStatusInfo[];
   currentUser?: string;
+  onViewContext?: (memberName: string) => void;
 }
 
 export function OnlineMembersTrigger({
   memberStatuses,
-  currentUser
+  currentUser,
+  onViewContext
 }: OnlineMembersTriggerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -110,6 +112,7 @@ export function OnlineMembersTrigger({
         <OnlineMembersPanel
           memberStatuses={memberStatuses.filter(m => m.memberName !== currentUser)}
           onClose={() => setIsOpen(false)}
+          onViewContext={onViewContext}
         />
       )}
     </div>

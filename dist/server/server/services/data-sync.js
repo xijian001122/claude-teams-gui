@@ -1,7 +1,11 @@
 import { join } from 'path';
-import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync, mkdirSync, readdirSync, rmSync } from 'fs';
 import { generateAvatarColor, extractAvatarLetter } from '@shared/utils/avatar';
 import { getDirectoryBirthTime, extractProjectFromCwd } from '../utils/file-stats';
+import { createLogger } from './log-factory';
+// Module loggers
+const log = createLogger({ module: 'DataSync', shorthand: 's.s.data-sync' });
+const wsLog = createLogger({ module: 'WebSocket', shorthand: 's.ws' });
 export class DataSyncService {
     db;
     fastify;
@@ -18,11 +22,11 @@ export class DataSyncService {
      */
     async init() {
         if (!existsSync(this.claudeTeamsPath)) {
-            console.log(`[DataSync] Claude teams path not found: ${this.claudeTeamsPath}`);
+            log.info(`Claude teams path not found: ${this.claudeTeamsPath}`);
             return;
         }
         const teams = await this.scanTeams();
-        console.log(`[DataSync] Found ${teams.length} teams`);
+        log.info(`Found ${teams.length} teams`);
         for (const teamName of teams) {
             await this.syncTeam(teamName);
         }
@@ -49,9 +53,9 @@ export class DataSyncService {
         const teamPath = join(this.claudeTeamsPath, teamName);
         const configPath = join(teamPath, 'config.json');
         const backupPath = join(teamPath, 'config.backup.json');
-        console.log(`[DataSync] Syncing team: ${teamName}, config path: ${configPath}`);
+        log.debug(`Syncing team: ${teamName}`);
         if (!existsSync(configPath)) {
-            console.log(`[DataSync] Config not found for team: ${teamName}`);
+            log.warn(`Config not found for team: ${teamName}`);
             return null;
         }
         // Read team config with error handling and auto-repair
@@ -62,26 +66,26 @@ export class DataSyncService {
             if (configContent.charCodeAt(0) === 0xFEFF) {
                 configContent = configContent.slice(1);
             }
-            console.log(`[DataSync] Config content for ${teamName}: ${configContent.substring(0, 200)}...`);
+            log.debug(`Config content for ${teamName}: ${configContent.substring(0, 100)}...`);
             config = JSON.parse(configContent);
             // Save backup on successful read
             writeFileSync(backupPath, JSON.stringify(config, null, 2));
         }
         catch (parseErr) {
-            console.error(`[DataSync] Failed to parse config.json for team ${teamName}:`, parseErr);
+            log.error(`Failed to parse config.json for team ${teamName}: ${parseErr}`);
             // Try to restore from backup
             if (existsSync(backupPath)) {
-                console.log(`[DataSync] Attempting to restore from backup for ${teamName}`);
+                log.info(`Attempting to restore from backup for ${teamName}`);
                 try {
                     const backupContent = readFileSync(backupPath, 'utf8');
                     config = JSON.parse(backupContent);
-                    console.log(`[DataSync] Successfully restored config from backup for ${teamName}`);
+                    log.info(`Successfully restored config from backup for ${teamName}`);
                     // Restore the main config file
                     writeFileSync(configPath, JSON.stringify(config, null, 2));
-                    console.log(`[DataSync] Restored config.json for ${teamName}`);
+                    log.info(`Restored config.json for ${teamName}`);
                 }
                 catch (backupErr) {
-                    console.error(`[DataSync] Failed to restore from backup for ${teamName}:`, backupErr);
+                    log.error(`Failed to restore from backup for ${teamName}: ${backupErr}`);
                     return null;
                 }
             }
@@ -117,9 +121,9 @@ export class DataSyncService {
         await this.db.upsertTeam(team);
         // Broadcast members_updated if we discovered new members
         const newMemberCount = team.members.length;
-        console.log(`[DataSync] Member count: existing=${existingMemberCount}, new=${newMemberCount}`);
+        log.debug(`Member count: existing=${existingMemberCount}, new=${newMemberCount}`);
         if (newMemberCount > existingMemberCount) {
-            console.log(`[DataSync] New members discovered, broadcasting members_updated for ${teamName}`);
+            log.info(`New members discovered, broadcasting members_updated for ${teamName}`);
             this.broadcastMembersUpdated(teamName, team.members);
         }
         // Sync existing messages (pass instance and project info)
@@ -146,7 +150,7 @@ export class DataSyncService {
                 sentCount++;
             }
         });
-        console.log(`[WebSocket] Broadcasted members_updated (${teamName}) to ${sentCount} clients`);
+        wsLog.debug(`Broadcasted members_updated (${teamName}) to ${sentCount} clients`);
     }
     /**
      * Extract members from config and discover from inboxes
@@ -186,7 +190,7 @@ export class DataSyncService {
                         avatarLetter: extractAvatarLetter(memberName),
                         isOnline: true
                     });
-                    console.log(`[DataSync] Discovered new member from inbox: ${memberName}`);
+                    log.info(`Discovered new member from inbox: ${memberName}`);
                 }
             }
         }
@@ -226,14 +230,14 @@ export class DataSyncService {
     async syncInbox(teamName, member, teamInstance, sourceProject) {
         const inboxPath = join(this.claudeTeamsPath, teamName, 'inboxes', `${member}.json`);
         if (!existsSync(inboxPath)) {
-            console.log(`[DataSync] Inbox not found: ${inboxPath}`);
+            log.debug(`Inbox not found: ${inboxPath}`);
             return 0;
         }
         try {
             const messages = JSON.parse(readFileSync(inboxPath, 'utf8'));
-            console.log(`[DataSync] Loading ${messages.length} messages from ${member}.json`);
+            log.debug(`Loading ${messages.length} messages from ${member}.json`);
             if (!Array.isArray(messages)) {
-                console.log(`[DataSync] Messages is not an array for ${member}`);
+                log.warn(`Messages is not an array for ${member}`);
                 return 0;
             }
             let synced = 0;
@@ -245,28 +249,27 @@ export class DataSyncService {
                 // The insertMessageIfNew function will handle duplicates by ID.
                 try {
                     const message = this.convertToMessage(teamName, member, i, msg, teamInstance, sourceProject);
-                    console.log(`[DataSync] Processing message ${i} from ${member}: id=${message.id}, from=${message.from}`);
+                    log.trace(`Processing message ${i} from ${member}: id=${message.id}, from=${message.from}`);
                     const inserted = await this.db.insertMessageIfNew(message);
-                    console.log(`[DataSync] Insert result for message ${i}: inserted=${inserted}`);
                     if (inserted) {
                         synced++;
                         newMessages.push(message);
                     }
                 }
                 catch (insertErr) {
-                    console.error(`[DataSync] Error inserting message ${i} from ${member}:`, insertErr);
+                    log.error(`Error inserting message ${i} from ${member}: ${insertErr}`);
                 }
             }
             // Broadcast new messages to WebSocket clients
-            console.log(`[DataSync] newMessages count: ${newMessages.length}`);
             if (newMessages.length > 0) {
+                log.debug(`Broadcasting ${newMessages.length} new messages`);
                 this.broadcastNewMessages(teamName, newMessages);
             }
-            console.log(`[DataSync] Synced ${synced}/${messages.length} messages from ${member}`);
+            log.debug(`Synced ${synced}/${messages.length} messages from ${member}`);
             return synced;
         }
         catch (err) {
-            console.error(`[DataSync] Error syncing inbox ${member}:`, err);
+            log.error(`Error syncing inbox ${member}: ${err}`);
             return 0;
         }
     }
@@ -327,10 +330,10 @@ export class DataSyncService {
     broadcastNewMessages(teamName, messages) {
         const wsServer = this.fastify?.websocketServer;
         if (!wsServer || !wsServer.clients) {
-            console.log('[DataSync] WebSocket server not available for broadcast');
+            wsLog.warn('WebSocket server not available for broadcast');
             return;
         }
-        console.log(`[DataSync] Broadcasting ${messages.length} messages, clients: ${wsServer.clients.size}`);
+        log.debug(`Broadcasting ${messages.length} messages to ${wsServer.clients.size} clients`);
         for (const message of messages) {
             const broadcastData = JSON.stringify({ type: 'new_message', team: teamName, message });
             let sentCount = 0;
@@ -340,7 +343,7 @@ export class DataSyncService {
                     sentCount++;
                 }
             });
-            console.log(`[WebSocket] Broadcasted synced message to ${sentCount} clients`);
+            wsLog.trace(`Broadcasted synced message to ${sentCount} clients`);
         }
     }
     /**
@@ -379,10 +382,10 @@ export class DataSyncService {
                     sentCount++;
                 }
             });
-            console.log(`[WebSocket] Broadcasted message to ${sentCount} clients`);
+            wsLog.debug(`Broadcasted message to ${sentCount} clients`);
         }
         else {
-            console.log('[WebSocket] No WebSocket server available for broadcast');
+            wsLog.warn('No WebSocket server available for broadcast');
         }
         return message;
     }
@@ -457,7 +460,7 @@ export class DataSyncService {
                     sentCount++;
                 }
             });
-            console.log(`[WebSocket] Broadcasted cross-team message to ${sentCount} clients in target team ${toTeam}`);
+            wsLog.debug(`Broadcasted cross-team message to ${sentCount} clients in target team ${toTeam}`);
         }
         return { success: true, message: sourceMessage };
     }
@@ -482,7 +485,7 @@ export class DataSyncService {
                 }
             }
             catch (err) {
-                console.error(`[DataSync] Error reading inbox ${member}, creating new:`, err);
+                log.warn(`Error reading inbox ${member}, creating new: ${err}`);
                 messages = [];
             }
         }
@@ -495,10 +498,10 @@ export class DataSyncService {
                 read: false
             });
             writeFileSync(inboxPath, JSON.stringify(messages, null, 2));
-            console.log(`[DataSync] Wrote message to inbox: ${member}`);
+            log.debug(`Wrote message to inbox: ${member}`);
         }
         catch (err) {
-            console.error(`[DataSync] Error writing to inbox ${member}:`, err);
+            log.error(`Error writing to inbox ${member}: ${err}`);
         }
     }
     /**
@@ -529,8 +532,61 @@ export class DataSyncService {
         if (!existsSync(archiveDir)) {
             mkdirSync(archiveDir, { recursive: true });
         }
-        // Archive logic here - copy DB records, attachments, etc.
-        console.log(`[DataSync] Archived team ${teamName} to ${archiveDir}`);
+        try {
+            // Get team info from database
+            const team = await this.db.getTeam(teamName);
+            if (team) {
+                // Get all messages for this team
+                const messages = await this.db.getMessages(teamName, { limit: 100000 });
+                // Write team.json
+                const teamData = {
+                    name: team.name,
+                    displayName: team.displayName,
+                    members: team.members,
+                    config: team.config,
+                    createdAt: team.createdAt,
+                    archivedAt: team.archivedAt,
+                    messageCount: messages.length
+                };
+                writeFileSync(join(archiveDir, 'team.json'), JSON.stringify(teamData, null, 2));
+                // Write messages.json
+                writeFileSync(join(archiveDir, 'messages.json'), JSON.stringify(messages, null, 2));
+                log.info(`Archived team ${teamName} to ${archiveDir} (${messages.length} messages)`);
+            }
+            else {
+                log.warn(`Team ${teamName} not found in database, creating empty archive`);
+            }
+        }
+        catch (err) {
+            log.error(`Error archiving team ${teamName}: ${err}`);
+        }
+        // Clean up empty archive directories
+        this.cleanupEmptyArchiveDirs();
+    }
+    /**
+     * Clean up empty archive directories
+     */
+    cleanupEmptyArchiveDirs() {
+        const archiveBase = join(this.dataDir, 'archive');
+        if (!existsSync(archiveBase)) {
+            return;
+        }
+        try {
+            const entries = readdirSync(archiveBase, { withFileTypes: true });
+            for (const entry of entries) {
+                if (entry.isDirectory()) {
+                    const dirPath = join(archiveBase, entry.name);
+                    const contents = readdirSync(dirPath);
+                    if (contents.length === 0) {
+                        rmSync(dirPath, { recursive: true });
+                        log.info(`Removed empty archive directory: ${entry.name}`);
+                    }
+                }
+            }
+        }
+        catch (err) {
+            log.error(`Error cleaning up empty archive directories: ${err}`);
+        }
     }
 }
 export default DataSyncService;

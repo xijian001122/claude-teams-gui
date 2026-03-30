@@ -17,6 +17,7 @@ interface ChatAreaProps {
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   onPermissionResponse?: (requestId: string, approve: boolean, agentId: string) => Promise<void>;
+  onViewMemberContext?: (memberName: string) => void;
 }
 
 // Visual divider between team instances
@@ -59,7 +60,8 @@ export function ChatArea({
   onAvatarClick,
   theme,
   onToggleTheme,
-  onPermissionResponse
+  onPermissionResponse,
+  onViewMemberContext
 }: ChatAreaProps) {
   const isReadOnly = team ? archivedTeams.some(t => t.name === team.name) : false;
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -185,6 +187,7 @@ export function ChatArea({
             <OnlineMembersTrigger
               memberStatuses={memberStatuses}
               currentUser="user"
+              onViewContext={onViewMemberContext}
             />
           </div>
         </div>

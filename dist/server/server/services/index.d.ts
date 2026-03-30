@@ -5,5 +5,6 @@ export * from './config';
 export * from './member-status';
 export * from './task-storage';
 export * from './session-summary';
-export * from './logger';
+export * from './session-reader';
+export * from './log-factory';
 //# sourceMappingURL=index.d.ts.map

@@ -8,3 +8,4 @@ export * from './OnlineMembersPanel';
 export * from './MemberStatusIndicator';
 export * from './JsonMessageCard';
 export * from './LogConfigPanel';
+export * from './MemberConversationPanel';

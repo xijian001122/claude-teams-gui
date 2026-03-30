@@ -1,4 +1,8 @@
 import { FastifyInstance } from 'fastify';
+import { createLogger } from '../services/log-factory';
+
+// Module logger
+const log = createLogger({ module: 'Hooks', shorthand: 's.r.hooks' });
 
 export interface TaskCreatedBody {
   taskId: string;
@@ -13,7 +17,7 @@ export interface HookRoutesOptions {
 }
 
 /**
- * 广播 task_created 事件到所有 WebSocket 客户端
+ * Broadcast task_created event to all WebSocket clients
  */
 function broadcastTaskCreated(
   fastify: FastifyInstance,
@@ -61,7 +65,7 @@ export async function hooksRoutes(
         };
       }
 
-      console.log(`[Hooks] Task created: ${body.taskId} for team ${body.teamName}`);
+      log.info(`Task created: ${body.taskId} for team ${body.teamName}`);
 
       // Broadcast to all WebSocket clients
       broadcastTaskCreated(fastify, {

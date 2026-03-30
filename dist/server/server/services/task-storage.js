@@ -8,6 +8,9 @@ import { readFile, writeFile, mkdir, unlink, readdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import { createLogger } from './log-factory';
+// Module logger
+const log = createLogger({ module: 'TaskStorage', shorthand: 's.s.task-storage' });
 const TASKS_BASE_DIR = join(homedir(), '.claude', 'tasks');
 const MAX_HISTORY_ENTRIES = 100;
 /**
@@ -71,13 +74,13 @@ export class TaskStorageService {
             const task = JSON.parse(content);
             // Validate required fields
             if (!task.id || !task.subject || !task.status) {
-                console.error(`[TaskStorage] Invalid task file ${taskId}: missing required fields`);
+                log.error(`Invalid task file ${taskId}: missing required fields`);
                 return null;
             }
             return task;
         }
         catch (error) {
-            console.error(`[TaskStorage] Error reading task ${taskId}:`, error);
+            log.error(`Error reading task ${taskId}: ${error}`);
             return null;
         }
     }
@@ -94,11 +97,11 @@ export class TaskStorageService {
             // Rename atomically (in Node.js, rename is atomic on POSIX systems)
             const { rename } = await import('fs/promises');
             await rename(tempPath, filePath);
-            console.log(`[TaskStorage] Wrote task ${task.id} for team ${teamName}`);
+            log.debug(`Wrote task ${task.id} for team ${teamName}`);
             return true;
         }
         catch (error) {
-            console.error(`[TaskStorage] Error writing task ${task.id}:`, error);
+            log.error(`Error writing task ${task.id}: ${error}`);
             return false;
         }
     }
@@ -126,11 +129,11 @@ export class TaskStorageService {
                 // Hard delete
                 await unlink(filePath);
             }
-            console.log(`[TaskStorage] Deleted task ${taskId} (soft: ${softDelete})`);
+            log.info(`Deleted task ${taskId} (soft: ${softDelete})`);
             return true;
         }
         catch (error) {
-            console.error(`[TaskStorage] Error deleting task ${taskId}:`, error);
+            log.error(`Error deleting task ${taskId}: ${error}`);
             return false;
         }
     }
@@ -223,7 +226,7 @@ export class TaskStorageService {
             return tasks;
         }
         catch (error) {
-            console.error(`[TaskStorage] Error reading tasks for team ${teamName}:`, error);
+            log.error(`Error reading tasks for team ${teamName}: ${error}`);
             return [];
         }
     }
@@ -249,7 +252,7 @@ export class TaskStorageService {
             return result;
         }
         catch (error) {
-            console.error('[TaskStorage] Error reading all teams tasks:', error);
+            log.error(`Error reading all teams tasks: ${error}`);
             return result;
         }
     }

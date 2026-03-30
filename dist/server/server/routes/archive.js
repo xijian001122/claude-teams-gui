@@ -1,5 +1,7 @@
+import { join } from 'path';
+import { existsSync, readdirSync, rmSync } from 'fs';
 export async function archiveRoutes(fastify, options) {
-    const { db } = options;
+    const { db, dataDir } = options;
     // GET /api/archive - Get archived teams
     fastify.get('/', async (_request, reply) => {
         try {
@@ -68,7 +70,19 @@ export async function archiveRoutes(fastify, options) {
                     error: 'Can only delete archived teams'
                 };
             }
+            // Delete from database
             db.deleteTeam(name);
+            // Delete archive directories matching pattern <name>-*
+            const archiveBase = join(dataDir, 'archive');
+            if (existsSync(archiveBase)) {
+                const entries = readdirSync(archiveBase, { withFileTypes: true });
+                for (const entry of entries) {
+                    if (entry.isDirectory() && entry.name.startsWith(`${name}-`)) {
+                        const dirPath = join(archiveBase, entry.name);
+                        rmSync(dirPath, { recursive: true });
+                    }
+                }
+            }
             return {
                 success: true
             };

@@ -1,6 +1,6 @@
 import type { AppConfig } from '@shared/types';
 import { DatabaseService } from './db';
-import { DataSyncService, FileWatcherService, CleanupService, MemberStatusService, LoggerService } from './services';
+import { DataSyncService, FileWatcherService, CleanupService, MemberStatusService } from './services';
 export interface ServerOptions {
     config: AppConfig;
     dataDir: string;
@@ -12,7 +12,6 @@ export declare function createServer(options: ServerOptions): Promise<{
     fileWatcher: FileWatcherService;
     cleanupService: CleanupService;
     memberStatusService: MemberStatusService;
-    loggerService: LoggerService;
 }>;
 export default createServer;
 //# sourceMappingURL=server.d.ts.map

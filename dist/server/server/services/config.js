@@ -3,11 +3,14 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 import { DEFAULT_CONFIG } from '@shared/constants';
+import { createLogger } from './log-factory';
+// Module logger
+const log = createLogger({ module: 'ConfigService', shorthand: 's.s.config' });
 // Configuration keys that require server restart when changed
 const RESTART_REQUIRED_KEYS = ['port', 'host', 'dataDir', 'teamsPath'];
 const RUNTIME_CONFIG_KEYS = ['retentionDays', 'theme', 'desktopNotifications', 'soundEnabled', 'cleanupEnabled', 'cleanupTime'];
 /**
- * 展开路径中的 ~ 为用户目录
+ * Expand path with ~ to user directory
  */
 function expandHomeDir(path) {
     if (path.startsWith('~/') || path === '~') {
@@ -22,7 +25,7 @@ export class ConfigService {
     writeTimeout = null;
     pendingChanges = [];
     onChangeCallback;
-    isWriting = false; // 防止文件写入后重复触发回调
+    isWriting = false; // Prevent callback loops after file writes
     constructor(configPath, initialConfig) {
         this.configPath = configPath;
         this.config = initialConfig || this.loadConfig();
@@ -34,39 +37,39 @@ export class ConfigService {
             if (existsSync(this.configPath)) {
                 const raw = readFileSync(this.configPath, 'utf8');
                 const fileConfig = JSON.parse(raw);
-                // 合并配置，缺失字段会从 DEFAULT_CONFIG 获取
+                // Merge config, missing fields get defaults
                 config = { ...DEFAULT_CONFIG, ...fileConfig };
-                // 检测是否有缺失的字段需要补全
+                // Check for missing fields
                 for (const key of Object.keys(DEFAULT_CONFIG)) {
                     if (!(key in fileConfig)) {
                         hasMissingFields = true;
-                        console.warn(`[ConfigService] Missing field '${String(key)}' in config file, will add with default value`);
+                        log.warn(`Missing field '${String(key)}' in config file, will add with default value`);
                     }
                 }
             }
             else {
                 hasMissingFields = true;
-                console.warn(`[ConfigService] Config file not found at ${this.configPath}, will create with defaults`);
+                log.warn(`Config file not found at ${this.configPath}, will create with defaults`);
             }
         }
         catch (err) {
-            console.warn(`[ConfigService] Failed to load config from ${this.configPath}:`, err);
+            log.warn(`Failed to load config from ${this.configPath}: ${err}`);
             hasMissingFields = true;
         }
-        // 如果有缺失字段，立即写回以确保配置完整
+        // Write back if missing fields
         if (hasMissingFields) {
             try {
                 this.isWriting = true;
                 writeFileSync(this.configPath, JSON.stringify(config, null, 2));
                 setTimeout(() => { this.isWriting = false; }, 100);
-                console.log('[ConfigService] Config file updated with default values');
+                log.info('Config file updated with default values');
             }
             catch (err) {
                 this.isWriting = false;
-                console.error('[ConfigService] Failed to write default config:', err);
+                log.error(`Failed to write default config: ${err}`);
             }
         }
-        // 展开路径中的 ~
+        // Expand ~ in paths
         config.dataDir = expandHomeDir(config.dataDir);
         config.teamsPath = expandHomeDir(config.teamsPath);
         return config;
@@ -78,7 +81,7 @@ export class ConfigService {
             ignoreInitial: true
         });
         this.watcher.on('change', () => {
-            // 忽略自己写入的变化，避免重复广播
+            // Ignore our own writes to avoid callback loops
             if (this.isWriting) {
                 this.isWriting = false;
                 return;
@@ -91,10 +94,12 @@ export class ConfigService {
                 this.onChangeCallback?.(changes);
             }
         });
+        log.info('Started watching config file');
     }
     stopWatching() {
         this.watcher?.close();
         this.watcher = null;
+        log.debug('Stopped watching config file');
     }
     getConfig() {
         return { ...this.config };
@@ -105,7 +110,7 @@ export class ConfigService {
         const changes = this.detectChanges(oldConfig, this.config);
         if (changes.length > 0) {
             this.trackPendingChanges(changes);
-            // 立即通知回调（不等待文件写入），确保前端即时收到反馈
+            // Notify callback immediately (don't wait for file write)
             this.onChangeCallback?.(changes);
         }
         this.writeDebounced();
@@ -148,14 +153,14 @@ export class ConfigService {
             try {
                 this.isWriting = true;
                 writeFileSync(this.configPath, JSON.stringify(this.config, null, 2));
-                // 短暂延迟后重置标志，确保 chokidar 事件已被忽略
+                // Brief delay before resetting flag to ensure chokidar event is ignored
                 setTimeout(() => {
                     this.isWriting = false;
                 }, 100);
             }
             catch (err) {
                 this.isWriting = false;
-                console.error('Failed to write config:', err);
+                log.error(`Failed to write config: ${err}`);
             }
         }, 300);
     }

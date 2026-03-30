@@ -2,6 +2,17 @@ import sqlite3 from 'sqlite3';
 import { join } from 'path';
 import { existsSync, mkdirSync, readFileSync } from 'fs';
 import type { Message, Team } from '@shared/types';
+import { createLogger } from '../services/log-factory';
+import type { Logger } from 'pino';
+
+// Lazy-initialized logger
+let _log: Logger | null = null;
+function getLog(): Logger {
+  if (!_log) {
+    _log = createLogger({ module: 'Database', shorthand: 's.db' });
+  }
+  return _log;
+}
 
 export class DatabaseService {
   private db: sqlite3.Database;
@@ -18,7 +29,7 @@ export class DatabaseService {
     const dbPath = join(dataDir, 'messages.db');
     this.db = new sqlite3.Database(dbPath, (err) => {
       if (err) {
-        console.error('[DB] Failed to open database:', err);
+        getLog().error(`Failed to open database: ${err}`);
       }
     });
 
@@ -33,20 +44,20 @@ export class DatabaseService {
       // Use exec with callback but wait for it in a blocking way
       this.db.exec(schema, (err) => {
         if (err) {
-          console.error('[DB] Failed to initialize schema:', err);
+          getLog().error(`Failed to initialize schema: ${err}`);
         } else {
-          console.log('[DB] Schema initialized');
+          getLog().info('Schema initialized');
           this.ready = true;
         }
       });
     } catch (err) {
-      console.error('[DB] Failed to read schema file:', err);
+      getLog().error(`Failed to read schema file: ${err}`);
     }
   }
 
   private ensureReady(): void {
     if (!this.ready) {
-      console.warn('[DB] Database not ready, operation may fail');
+      getLog().warn('Database not ready, operation may fail');
     }
   }
 

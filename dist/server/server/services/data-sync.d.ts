@@ -72,6 +72,10 @@ export declare class DataSyncService {
      * Archive team data
      */
     private archiveTeamData;
+    /**
+     * Clean up empty archive directories
+     */
+    private cleanupEmptyArchiveDirs;
 }
 export default DataSyncService;
 //# sourceMappingURL=data-sync.d.ts.map

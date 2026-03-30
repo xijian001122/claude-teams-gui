@@ -1,5 +1,9 @@
 import { FastifyInstance } from 'fastify';
 import { ConfigService } from '../services/config';
+import { createLogger } from '../services/log-factory';
+
+// Module logger
+const log = createLogger({ module: 'Settings', shorthand: 's.r.settings' });
 
 export interface SettingsRoutesOptions {
   configService: ConfigService;
@@ -124,7 +128,7 @@ export async function settingsRoutes(
         try {
           await onRestart();
         } catch (err) {
-          console.error('[Settings] Restart failed:', err);
+          log.error(`Restart failed: ${err}`);
         }
       }, 100);
 

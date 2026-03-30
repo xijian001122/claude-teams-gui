@@ -10,6 +10,10 @@ import { join } from 'path';
 import { homedir } from 'os';
 import type { Task, TaskStatus } from '@shared/types';
 import { TaskStorageService } from './task-storage';
+import { createLogger } from './log-factory';
+
+// Module logger
+const log = createLogger({ module: 'SessionSummary', shorthand: 's.s.session-summary' });
 
 /**
  * Session summary options
@@ -63,7 +67,7 @@ export class SessionSummaryService {
     await this.ensureDir(join(this.teamsPath, teamName));
     await writeFile(filePath, markdown, 'utf-8');
 
-    console.log(`[SessionSummary] Generated summary for team ${teamName}: ${fileName}`);
+    log.info(`Generated summary for team ${teamName}: ${fileName}`);
     return filePath;
   }
 

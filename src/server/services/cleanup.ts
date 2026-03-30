@@ -1,6 +1,10 @@
 import { schedule } from 'node-cron';
 import { subDays, formatISO } from 'date-fns';
 import type { DatabaseService } from '../db';
+import { createLogger } from './log-factory';
+
+// Module logger
+const log = createLogger({ module: 'Cleanup', shorthand: 's.s.cleanup' });
 
 export interface CleanupConfig {
   retentionDays: number;
@@ -23,7 +27,7 @@ export class CleanupService {
    */
   schedule(): void {
     if (!this.config.cleanupEnabled) {
-      console.log('[Cleanup] Cleanup is disabled');
+      log.info('Cleanup is disabled');
       return;
     }
 
@@ -34,7 +38,7 @@ export class CleanupService {
       this.runCleanup();
     });
 
-    console.log(`[Cleanup] Scheduled daily at ${this.config.cleanupTime}`);
+    log.info(`Scheduled daily at ${this.config.cleanupTime}`);
   }
 
   /**
@@ -61,7 +65,7 @@ export class CleanupService {
     ) {
       this.stop();
       this.schedule();
-      console.log('[Cleanup] Config updated and rescheduled');
+      log.info('Config updated and rescheduled');
     }
   }
 
@@ -69,7 +73,7 @@ export class CleanupService {
    * Run cleanup immediately
    */
   async runCleanup(): Promise<{ deleted: number; archived: number }> {
-    console.log('[Cleanup] Running cleanup task...');
+    log.info('Running cleanup task...');
     const startTime = Date.now();
 
     const results = {
@@ -90,11 +94,11 @@ export class CleanupService {
       await this.cleanupOrphanAttachments();
 
     } catch (err) {
-      console.error('[Cleanup] Error during cleanup:', err);
+      log.error(`Error during cleanup: ${err}`);
     }
 
     const duration = Date.now() - startTime;
-    console.log(`[Cleanup] Completed in ${duration}ms. Deleted: ${results.deleted}, Archived: ${results.archived}`);
+    log.info(`Completed in ${duration}ms. Deleted: ${results.deleted}, Archived: ${results.archived}`);
 
     return results;
   }
@@ -109,7 +113,7 @@ export class CleanupService {
     const deleted = await this.db.deleteOldMessages(cutoffStr);
 
     if (deleted > 0) {
-      console.log(`[Cleanup] Deleted ${deleted} old messages from active teams`);
+      log.info(`Deleted ${deleted} old messages from active teams`);
     }
 
     return deleted;
@@ -132,7 +136,7 @@ export class CleanupService {
     }
 
     if (archived > 0) {
-      console.log(`[Cleanup] Permanently deleted ${archived} archived teams`);
+      log.info(`Permanently deleted ${archived} archived teams`);
     }
 
     return archived;
@@ -146,7 +150,7 @@ export class CleanupService {
     await this.db.deleteTeam(teamName);
 
     // Note: Files are kept in archive directory for manual cleanup
-    console.log(`[Cleanup] Permanently deleted team: ${teamName}`);
+    log.info(`Permanently deleted team: ${teamName}`);
   }
 
   /**
@@ -155,7 +159,7 @@ export class CleanupService {
   private async cleanupOrphanAttachments(): Promise<void> {
     // Implementation depends on attachment storage strategy
     // For now, just log
-    console.log('[Cleanup] Orphan attachment cleanup not implemented');
+    log.debug('Orphan attachment cleanup not implemented');
   }
 }
 

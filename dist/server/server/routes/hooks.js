@@ -1,5 +1,8 @@
+import { createLogger } from '../services/log-factory';
+// Module logger
+const log = createLogger({ module: 'Hooks', shorthand: 's.r.hooks' });
 /**
- * 广播 task_created 事件到所有 WebSocket 客户端
+ * Broadcast task_created event to all WebSocket clients
  */
 function broadcastTaskCreated(fastify, taskData) {
     const wsServer = fastify.websocketServer;
@@ -34,7 +37,7 @@ export async function hooksRoutes(fastify, _options) {
                 error: 'Missing required fields: taskId, teamName'
             };
         }
-        console.log(`[Hooks] Task created: ${body.taskId} for team ${body.teamName}`);
+        log.info(`Task created: ${body.taskId} for team ${body.teamName}`);
         // Broadcast to all WebSocket clients
         broadcastTaskCreated(fastify, {
             taskId: body.taskId,
