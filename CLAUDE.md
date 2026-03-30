@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Version: v0.3.20
+## Current Version: v0.3.29
 
 **最新修复** (2026-03-28):
 - schema.sql 未复制到 dist 目录导致数据库初始化失败
