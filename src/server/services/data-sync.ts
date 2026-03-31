@@ -357,10 +357,11 @@ export class DataSyncService {
     // If sender is NOT the inbox owner, this message is TO the inbox owner
     const actualTo = (actualFrom !== inbox) ? inbox : null;
 
-    // Use stable ID based on team, inbox, index and timestamp to avoid duplicates
-    const stableId = msg.timestamp
-      ? `${team}-${inbox}-${index}-${new Date(msg.timestamp).getTime()}`
-      : `${team}-${inbox}-${index}`;
+    // Use original ID if available (from sendMessage), otherwise generate stable ID
+    const stableId = msg._originalId
+      || (msg.timestamp
+        ? `${team}-${inbox}-${index}-${new Date(msg.timestamp).getTime()}`
+        : `${team}-${inbox}-${index}`);
 
     return {
       id: stableId,
@@ -579,7 +580,8 @@ export class DataSyncService {
         text: message.content,
         summary: `Message from user`,
         timestamp: message.timestamp,
-        read: false
+        read: false,
+        _originalId: message.id
       });
 
       writeFileSync(inboxPath, JSON.stringify(messages, null, 2));

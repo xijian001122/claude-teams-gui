@@ -1,5 +1,6 @@
 import { format, isToday, isYesterday } from 'date-fns';
 import { marked } from 'marked';
+import { useState, useRef, useEffect } from 'preact/hooks';
 import type { Message, TeamMember } from '@shared/types';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
@@ -20,6 +21,62 @@ interface MessageBubbleProps {
   onAvatarClick?: (memberName: string) => void;
   currentTeam?: string;
   onPermissionResponse?: (requestId: string, approve: boolean, agentId: string) => Promise<void>;
+}
+
+// Long content wrapper with expand/collapse
+// Exposes expand state via render prop so the button can be placed elsewhere
+function LongContent({ html, isSelf, footer }: { html: string; isSelf: boolean; footer: (expandBtn: any) => any }) {
+  const [expanded, setExpanded] = useState(false);
+  const [isOverflow, setIsOverflow] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const maxHeight = 300; // px
+
+  useEffect(() => {
+    if (contentRef.current) {
+      setIsOverflow(contentRef.current.scrollHeight > maxHeight);
+    }
+  }, [html]);
+
+  const expandBtn = isOverflow ? (
+    <button
+      onClick={() => setExpanded(!expanded)}
+      className={`text-xs flex items-center gap-1 transition-colors ${
+        isSelf ? 'text-blue-100 hover:text-white' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+      }`}
+    >
+      {expanded ? (
+        <>
+          <Icon icon="chevron-up" size={14} />
+          收起
+        </>
+      ) : (
+        <>
+          <Icon icon="chevron-down" size={14} />
+          展开全部
+        </>
+      )}
+    </button>
+  ) : null;
+
+  return (
+    <>
+      <div className="relative">
+        <div
+          ref={contentRef}
+          className={`overflow-y-auto transition-all duration-200 ${expanded ? '' : 'max-h-[300px]'}`}
+          style={{ maxHeight: expanded ? 'none' : `${maxHeight}px` }}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+        {/* Gradient overlay when collapsed */}
+        {!expanded && isOverflow && (
+          <div className={`absolute bottom-0 left-0 right-0 h-12 pointer-events-none ${
+            isSelf ? 'bg-gradient-to-t from-blue-500' : 'bg-gradient-to-t from-[var(--bg-secondary)]'
+          }`} />
+        )}
+      </div>
+      {footer(expandBtn)}
+    </>
+  );
 }
 
 function formatMessageContent(content: string): { type: 'text' | 'json'; display: string } {
@@ -183,20 +240,41 @@ export function MessageBubble({
             onPermissionResponse={onPermissionResponse}
           />
         ) : (
-          <div
-            className={`text-sm break-words markdown-content ${isSystemMessage ? 'italic text-gray-500' : ''}`}
-            dangerouslySetInnerHTML={{ __html: renderContent() }}
-          />
+          <div className={`text-sm break-words markdown-content ${isSystemMessage ? 'italic text-gray-500' : ''}`}>
+            {isSystemMessage ? (
+              <>
+                {renderContent()}
+                <div className={`text-xs mt-1 ${isSelf ? 'text-blue-100' : 'text-gray-400'}`}>
+                  {formatTime(message.timestamp)}
+                </div>
+              </>
+            ) : (
+              <LongContent
+                html={renderContent()}
+                isSelf={isSelf}
+                footer={(expandBtn: any) => (
+                  <div className={`flex items-center justify-between text-xs mt-1 ${
+                    isSelf ? 'text-blue-100' : 'text-gray-400'
+                  }`}>
+                    <span>{formatTime(message.timestamp)}</span>
+                    {expandBtn}
+                  </div>
+                )}
+              />
+            )}
+          </div>
         )}
 
-        {/* Timestamp */}
-        <div
-          className={`text-xs mt-1 ${
-            isSelf ? 'text-blue-100' : 'text-gray-400'
-          }`}
-        >
-          {formatTime(message.timestamp)}
-        </div>
+        {/* Timestamp (only for system messages and json messages) */}
+        {(isSystemMessage || isJsonMessage) && (
+          <div
+            className={`text-xs mt-1 ${
+              isSelf ? 'text-blue-100' : 'text-gray-400'
+            }`}
+          >
+            {formatTime(message.timestamp)}
+          </div>
+        )}
       </div>
     </div>
   );

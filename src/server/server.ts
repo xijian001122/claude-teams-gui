@@ -2,9 +2,12 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import staticPlugin from '@fastify/static';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { existsSync } from 'fs';
 import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import type { AppConfig } from '@shared/types';
 import { DatabaseService } from './db';
 import { DataSyncService, FileWatcherService, CleanupService, ConfigService, MemberStatusService } from './services';

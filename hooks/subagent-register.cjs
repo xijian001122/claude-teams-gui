@@ -1,17 +1,14 @@
 #!/usr/bin/env node
 /**
- * SubagentStart Hook - Session Registration
+ * Session Registration Script
  *
- * Registers a subagent's session information when the SubagentStart hook fires.
- * Writes session data to ~/.claude/teams/<team>/sessions/<member>.json
+ * Registers a team member's session by scanning jsonl files.
+ * The jsonl filename IS the session ID, and its first line contains
+ * teamName and agentName for reliable matching.
  *
- * Hook data format (via stdin):
- * {
- *   agent_id: string,      // e.g., "developer@fhd-app-team" or "agent-uuid"
- *   agent_type: string,   // "builder" | "validator" | "general-purpose" | etc
- *   session_id: string,   // UUID of the subagent's session
- *   cwd?: string          // Current working directory
- * }
+ * Modes:
+ *   1. CLI:   node subagent-register.cjs --member <name> --team <team> [--cwd <dir>] [--wait <ms>]
+ *   2. Hook:  reads JSON from stdin (SubagentStart data)
  */
 
 const os = require('os');
@@ -20,101 +17,170 @@ const path = require('path');
 
 const CLAUDE_DIR = path.join(os.homedir(), '.claude');
 
+// ========== Session Discovery via jsonl ==========
+
 /**
- * Resolve team and member name from agent_id or cwd
- * agent_id format: "member-name@team-name" or "agent-uuid"
+ * Compute project hash from cwd (matches Claude Code's algorithm)
  */
-function resolveTeamAndMember(agentId, cwd) {
-  // Try to parse from agent_id format "member@team"
-  const parts = agentId.split('@');
-  if (parts.length === 2) {
-    return { memberName: parts[0], teamName: parts[1] };
-  }
-
-  // Fallback: search teams config.json for matching cwd
-  if (cwd) {
-    const teamsDir = path.join(CLAUDE_DIR, 'teams');
-    if (fs.existsSync(teamsDir)) {
-      const entries = fs.readdirSync(teamsDir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-        const configPath = path.join(teamsDir, entry.name, 'config.json');
-        if (fs.existsSync(configPath)) {
-          try {
-            const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-            if (config.members) {
-              const member = config.members.find(m => m.cwd === cwd);
-              if (member) {
-                return { memberName: member.name, teamName: entry.name };
-              }
-            }
-          } catch {
-            // Skip invalid config
-          }
-        }
-      }
-    }
-  }
-
-  return { memberName: null, teamName: null };
+function projectHash(cwd) {
+  return '-' + cwd.replace(/[/\\]/g, '-').replace(/^-/, '');
 }
 
-// ========== Main ==========
+/**
+ * Find session ID by scanning jsonl files for matching teamName + agentName.
+ * Returns the most recent matching session ID.
+ */
+function findSessionByJsonl(teamName, memberName, cwd) {
+  const projectsDir = path.join(CLAUDE_DIR, 'projects');
+  if (!fs.existsSync(projectsDir)) return null;
 
-let inputData = '';
-process.stdin.on('data', chunk => {
-  inputData += chunk;
-});
+  const hash = projectHash(cwd);
+  const projectDir = path.join(projectsDir, hash);
+  if (!fs.existsSync(projectDir)) return null;
 
-process.stdin.on('end', () => {
-  try {
-    const hookData = JSON.parse(inputData);
-    const { agent_id, agent_type, session_id, cwd } = hookData;
+  let bestMatch = null;
+  let bestTime = 0;
 
-    if (!agent_id || !session_id) {
-      console.error('[SubagentRegister] Missing required fields: agent_id, session_id');
-      process.exit(0);
-      return;
-    }
+  const files = fs.readdirSync(projectDir).filter(f => f.endsWith('.jsonl'));
 
-    const { memberName, teamName } = resolveTeamAndMember(agent_id, cwd);
+  for (const f of files) {
+    try {
+      const fd = fs.openSync(path.join(projectDir, f), 'r');
+      const buf = Buffer.alloc(4096);
+      const bytesRead = fs.readSync(fd, buf, 0, 4096, 0);
+      fs.closeSync(fd);
 
-    if (!memberName || !teamName) {
-      console.error('[SubagentRegister] Could not determine team/member from agent_id:', agent_id);
-      process.exit(0);
-      return;
-    }
+      const firstLine = buf.toString('utf8', 0, bytesRead).split('\n')[0];
+      const entry = JSON.parse(firstLine);
 
-    // Write session registration file
-    const sessionsDir = path.join(CLAUDE_DIR, 'teams', teamName, 'sessions');
-    fs.mkdirSync(sessionsDir, { recursive: true });
-
-    const sessionFile = path.join(sessionsDir, `${memberName}.json`);
-    const sessionData = {
-      memberName,
-      teamName,
-      agentId: agent_id,
-      agentType: agent_type,
-      sessionId: session_id,
-      cwd: cwd || null,
-      registeredAt: new Date().toISOString()
-    };
-
-    fs.writeFileSync(sessionFile, JSON.stringify(sessionData, null, 2));
-
-    console.log(`[SubagentRegister] Registered: ${memberName}@${teamName} -> ${session_id}`);
-    if (agent_type) {
-      console.log(`[SubagentRegister] Agent type: ${agent_type}`);
-    }
-
-    process.exit(0);
-  } catch (err) {
-    console.error('[SubagentRegister] Error:', err.message);
-    process.exit(0);
+      if (entry.teamName === teamName && entry.agentName === memberName) {
+        const stat = fs.statSync(path.join(projectDir, f));
+        if (stat.mtimeMs > bestTime) {
+          bestMatch = f.replace('.jsonl', '');
+          bestTime = stat.mtimeMs;
+        }
+      }
+    } catch { /* skip */ }
   }
+
+  return bestMatch;
+}
+
+// ========== Registration ==========
+
+function writeRegistration(memberName, teamName, agentId, agentType, sessionId, cwd) {
+  const sessionsDir = path.join(CLAUDE_DIR, 'teams', teamName, 'sessions');
+  fs.mkdirSync(sessionsDir, { recursive: true });
+
+  const sessionFile = path.join(sessionsDir, `${memberName}.json`);
+  const sessionData = {
+    memberName,
+    teamName,
+    agentId: agentId || `${memberName}@${teamName}`,
+    agentType: agentType || 'general-purpose',
+    sessionId,
+    cwd: cwd || null,
+    registeredAt: new Date().toISOString()
+  };
+
+  fs.writeFileSync(sessionFile, JSON.stringify(sessionData, null, 2));
+  return sessionData;
+}
+
+// ========== CLI Mode ==========
+
+function runCliMode(args) {
+  const memberName = args['--member'];
+  const teamName = args['--team'];
+  const cwd = args['--cwd'] || process.cwd();
+  const waitMs = parseInt(args['--wait']) || 5000;
+
+  if (!memberName || !teamName) {
+    console.error('[SubagentRegister] --member and --team are required');
+    process.exit(1);
+  }
+
+  // Retry loop: wait for jsonl file to appear
+  const deadline = Date.now() + waitMs;
+  let sessionId = null;
+
+  while (Date.now() < deadline) {
+    sessionId = findSessionByJsonl(teamName, memberName, cwd);
+    if (sessionId) break;
+    // Busy-wait 300ms
+    const spinEnd = Date.now() + 300;
+    while (Date.now() < spinEnd) {}
+  }
+
+  const data = writeRegistration(memberName, teamName, `${memberName}@${teamName}`, null, sessionId, cwd);
+
+  if (sessionId) {
+    console.log(`[SubagentRegister] Registered: ${memberName}@${teamName} -> ${sessionId}`);
+  } else {
+    console.log(`[SubagentRegister] Registered (pending): ${memberName}@${teamName} - jsonl not found after ${waitMs}ms`);
+  }
+
+  process.exit(0);
+}
+
+// ========== Hook stdin Mode ==========
+
+function runHookMode() {
+  let inputData = '';
+  process.stdin.on('data', chunk => { inputData += chunk; });
+
+  process.stdin.on('end', () => {
+    try {
+      const hookData = JSON.parse(inputData);
+      const { agent_id, agent_type, cwd } = hookData;
+
+      if (!agent_id) {
+        console.error('[SubagentRegister] Missing agent_id');
+        process.exit(0);
+        return;
+      }
+
+      // Parse member@team from agent_id
+      const parts = agent_id.split('@');
+      let memberName, teamName;
+
+      if (parts.length === 2) {
+        memberName = parts[0];
+        teamName = parts[1];
+      } else {
+        // Fallback: search jsonl files
+        console.error('[SubagentRegister] agent_id not in member@team format');
+        process.exit(0);
+        return;
+      }
+
+      const sessionId = findSessionByJsonl(teamName, memberName, cwd || process.cwd());
+
+      writeRegistration(memberName, teamName, agent_id, agent_type, sessionId, cwd);
+
+      console.log(`[SubagentRegister] Registered: ${memberName}@${teamName} -> ${sessionId || 'pending'}`);
+      process.exit(0);
+    } catch (err) {
+      console.error('[SubagentRegister] Error:', err.message);
+      process.exit(0);
+    }
+  });
+
+  process.stdin.on('error', err => {
+    console.error('[SubagentRegister] stdin error:', err.message);
+    process.exit(0);
+  });
+}
+
+// ========== Entry ==========
+
+const args = {};
+process.argv.slice(2).forEach((val, i, arr) => {
+  if (val.startsWith('--')) args[val] = arr[i + 1] || true;
 });
 
-process.stdin.on('error', err => {
-  console.error('[SubagentRegister] stdin error:', err.message);
-  process.exit(0);
-});
+if (args['--member'] && args['--team']) {
+  runCliMode(args);
+} else {
+  runHookMode();
+}

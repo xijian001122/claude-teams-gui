@@ -20,6 +20,59 @@ interface ChatAreaProps {
   onViewMemberContext?: (memberName: string) => void;
 }
 
+// Check if message is internal and should be filtered
+function isInternalMessage(content: string): { isInternal: boolean; processedContent?: string } {
+  // Remove leading newlines and whitespace for more reliable detection
+  const trimmed = content.replace(/^\s+/, '');
+
+  // Filter out teammate-message tags (use includes for more reliable matching)
+  if (trimmed.includes('<teammate-message')) {
+    const match = trimmed.match(/<teammate-message[^>]*teammate_id="([^"]+)"[^>]*>([\s\S]*)<\/teammate-message>/);
+    if (match && match[1] === 'user') {
+      // Extract content for user messages
+      return { isInternal: false, processedContent: match[2].trim() };
+    }
+    // Filter out other teammate messages (team-lead, etc.)
+    return { isInternal: true };
+  }
+
+  // Filter out command execution tags (use includes for robust matching)
+  if (trimmed.includes('<command-name') || trimmed.includes('<command-message') ||
+      trimmed.includes('<local-command-stdout') || trimmed.includes('<local-command-caveat')) {
+    return { isInternal: true };
+  }
+
+  // Filter out tool_result JSON arrays
+  if (trimmed.startsWith('[{') && trimmed.includes('"tool_use_id"')) {
+    return { isInternal: true };
+  }
+
+  // Filter out raw text block arrays [{"type":"text","text":"..."}]
+  if (trimmed.startsWith('[{') && trimmed.includes('"type":"text"') && trimmed.includes('"text"')) {
+    return { isInternal: true };
+  }
+
+  // Filter out interrupted request messages
+  if (trimmed === '[Request interrupted by user]' || trimmed.startsWith('[Request interrupted')) {
+    return { isInternal: true };
+  }
+
+  // Filter out internal protocol messages (JSON format)
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const internalTypes = ['idle_notification', 'shutdown_request', 'shutdown_response', 'task_assignment', 'permission_request', 'permission_response'];
+      if (internalTypes.includes(parsed.type)) {
+        return { isInternal: true };
+      }
+    } catch {
+      // Not valid JSON, continue
+    }
+  }
+
+  return { isInternal: false };
+}
+
 // Visual divider between team instances
 function InstanceDivider({ timestamp, instanceIndex, onToggle, isExpanded, isLatest }: {
   timestamp: string;
@@ -94,26 +147,26 @@ export function ChatArea({
   const instanceMessages: Map<string, Message[]> = new Map();
 
   messages.forEach(message => {
-    // Skip idle notifications
-    if (message.content.trim().startsWith('{') && message.content.trim().endsWith('}')) {
-      try {
-        const parsed = JSON.parse(message.content);
-        if (parsed.type === 'idle_notification') {
-          return;
-        }
-      } catch {
-        // Not valid JSON, continue processing
-      }
+    // Check and filter internal messages
+    const checkResult = isInternalMessage(message.content);
+    if (checkResult.isInternal) {
+      return;
     }
+
+    // Use processed content if available
+    const processedMessage = checkResult.processedContent
+      ? { ...message, content: checkResult.processedContent }
+      : { ...message };
+    const content = processedMessage.content.trim();
 
     // Treat null/undefined teamInstance as current instance (not __legacy__)
     // Messages from UI or with missing teamInstance should be grouped with the latest instance
-    const instance = message.teamInstance || '__current__';
+    const instance = processedMessage.teamInstance || '__current__';
     if (!instanceMessages.has(instance)) {
       instanceMessages.set(instance, []);
       instanceOrder.push(instance);
     }
-    instanceMessages.get(instance)!.push(message);
+    instanceMessages.get(instance)!.push(processedMessage);
   });
 
   // Build flat render list with instance dividers
