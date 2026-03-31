@@ -20,18 +20,11 @@ export async function memberSessionRoutes(fastify, options) {
     });
     // GET /api/teams/:team/members/:member/conversation
     // Returns conversation history for a member's session
-    fastify.get('/:team/members/:member/conversation', async (request, reply) => {
+    fastify.get('/:team/members/:member/conversation', async (request, _reply) => {
         const { team, member } = request.params;
         const query = request.query;
         const limit = query.limit ? parseInt(query.limit, 10) : 50;
         const conversation = sessionReader.getMemberConversation(team, member, limit);
-        if (!conversation) {
-            reply.status(404);
-            return {
-                success: false,
-                error: 'Session not registered'
-            };
-        }
         return {
             success: true,
             data: conversation

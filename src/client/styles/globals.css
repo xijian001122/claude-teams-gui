@@ -302,6 +302,11 @@ html, body, #root {
 }
 
 /* Markdown content styles */
+.markdown-content {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .markdown-content h1,
 .markdown-content h2,
 .markdown-content h3,

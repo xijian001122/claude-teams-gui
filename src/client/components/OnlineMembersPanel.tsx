@@ -61,7 +61,7 @@ export function OnlineMembersPanel({
       </div>
 
       {/* Content */}
-      <div className="max-h-80 overflow-y-auto">
+      <div className="max-h-[480px] overflow-y-auto">
         {memberStatuses.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
             暂无成员
@@ -226,7 +226,7 @@ function MemberItem({ member, formatLastActivity, getStatusLabel, onViewContext 
             {member.memberName}
           </span>
           {member.status !== 'offline' && (
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${badge.class}`}>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${badge.class}`}>
               {badge.text}
             </span>
           )}

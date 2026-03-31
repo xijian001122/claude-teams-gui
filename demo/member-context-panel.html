@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成员会话上下文查看 - UI 效果图</title>
+    <style>
+        /* ========== 基础重置 ========== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            padding: 40px 20px;
+            line-height: 1.6;
+            color: #e4e4e7;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            color: #fff;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #9ca3af;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+
+        /* ========== 设计卡片 ========== */
+        .design-card {
+            background: #252542;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+            border: 1px solid #3a3a5c;
+        }
+
+        .design-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .design-desc {
+            color: #9ca3af;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        /* ========== 聊天界面模拟 ========== */
+        .chat-mock {
+            background: #0f0f1a;
+            border-radius: 12px;
+            border: 1px solid #3a3a5c;
+            overflow: hidden;
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 聊天头部 */
+        .chat-header {
+            height: 64px;
+            padding: 0 20px;
+            background: #1a1a2e;
+            border-bottom: 1px solid #3a3a5c;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .team-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        /* 在线成员触发器 */
+        .online-trigger {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .status-dot::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 50%;
+            border: 2px solid #ef4444;
+            animation: pulse 2s ease-out infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        .online-text {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .member-avatars {
+            display: flex;
+            margin-left: 4px;
+        }
+
+        .mini-avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: -6px;
+            border: 2px solid #1a1a2e;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .mini-avatar:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+            z-index: 10;
+        }
+
+        .mini-avatar.f { background: #3b82f6; }
+        .mini-avatar.b { background: #10b981; }
+        .mini-avatar.t { background: #8b5cf6; }
+
+        /* 消息区域 */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message-row {
+            display: flex;
+            margin-bottom: 16px;
+            align-items: flex-start;
+        }
+
+        .message-row.self {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 0 12px;
+            flex-shrink: 0;
+        }
+
+        .avatar.user { background: #3b82f6; }
+        .avatar.agent { background: #10b981; }
+
+        .message-content {
+            max-width: 70%;
+        }
+
+        .sender-name {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-bottom: 4px;
+        }
+
+        .message-row.self .sender-name {
+            text-align: right;
+        }
+
+        .bubble {
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .message-row:not(.self) .bubble {
+            background: #252542;
+            color: #e4e4e7;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #3a3a5c;
+        }
+
+        .message-row.self .bubble {
+            background: #3b82f6;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .timestamp {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .message-row.self .timestamp {
+            text-align: right;
+        }
+
+        /* 输入框 */
+        .chat-input {
+            padding: 12px 20px;
+            background: #1a1a2e;
+            border-top: 1px solid #3a3a5c;
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-field {
+            flex: 1;
+            background: #252542;
+            border: 1px solid #3a3a5c;
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #e4e4e7;
+            font-size: 14px;
+        }
+
+        .send-btn {
+            padding: 10px 20px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        /* ========== 成员上下文面板 ========== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .context-panel {
+            width: 700px;
+            max-height: 80vh;
+            background: #252542;
+            border-radius: 16px;
+            border: 1px solid #3a3a5c;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 面板头部 */
+        .panel-header {
+            padding: 16px 20px;
+            background: #1a1a2e;
+            border-bottom: 1px solid #3a3a5c;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .panel-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #3b82f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .panel-title-text h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .panel-title-text p {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-top: 2px;
+        }
+
+        .panel-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* Toggle Switch */
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .toggle-text {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 36px;
+            height: 20px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: #4b5563;
+            border-radius: 20px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background: #3b82f6;
+        }
+
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(16px);
+        }
+
+        .close-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: #9ca3af;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background: #3a3a5c;
+            color: #fff;
+        }
+
+        /* 面板内容区域 */
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .context-message {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        .context-message.user {
+            justify-content: flex-end;
+        }
+
+        .context-message.assistant {
+            justify-content: flex-start;
+        }
+
+        .context-bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 20px;
+        }
+
+        .context-message.user .context-bubble {
+            background: #3b82f6;
+            color: white;
+            border-bottom-right-radius: 6px;
+        }
+
+        .context-message.assistant .context-bubble {
+            background: #1a1a2e;
+            color: #e4e4e7;
+            border: 1px solid #3a3a5c;
+            border-bottom-left-radius: 6px;
+        }
+
+        .context-role {
+            font-size: 11px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        .context-time {
+            font-size: 10px;
+            margin-left: 8px;
+            opacity: 0.6;
+        }
+
+        .context-text {
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        /* 面板底部 */
+        .panel-footer {
+            padding: 12px 20px;
+            background: #1a1a2e;
+            border-top: 1px solid #3a3a5c;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .message-count {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .refresh-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: transparent;
+            border: 1px solid #3a3a5c;
+            border-radius: 8px;
+            color: #9ca3af;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: #3a3a5c;
+            color: #fff;
+        }
+
+        /* ========== 提示框 ========== */
+        .tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 6px 10px;
+            background: #3a3a5c;
+            color: #fff;
+            font-size: 11px;
+            border-radius: 6px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            margin-bottom: 6px;
+        }
+
+        .mini-avatar:hover .tooltip {
+            opacity: 1;
+        }
+
+        /* ========== 空状态 ========== */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #6b7280;
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        /* ========== 操作提示 ========== */
+        .action-hint {
+            background: #1a1a2e;
+            border: 1px dashed #3a3a5c;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #9ca3af;
+            font-size: 13px;
+        }
+
+        .action-hint svg {
+            width: 16px;
+            height: 16px;
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>成员会话上下文查看功能</h1>
+        <p class="subtitle">Member Conversation Context Panel Demo</p>
+
+        <div class="design-card">
+            <div class="design-title">交互演示</div>
+            <div class="design-desc">点击上方绿色头像 (backend-dev) 查看成员的对话上下文面板。面板展示成员与 Claude 的实时对话历史。</div>
+
+            <div class="chat-mock">
+                <!-- 聊天头部 -->
+                <div class="chat-header">
+                    <div class="team-name">claude-teams-gui</div>
+                    <div class="online-trigger">
+                        <div class="status-dot"></div>
+                        <span class="online-text">在线成员</span>
+                        <div class="member-avatars">
+                            <div class="mini-avatar f" onclick="openModal()">F
+                                <div class="tooltip">frontend-dev</div>
+                            </div>
+                            <div class="mini-avatar b" onclick="openModal()">B
+                                <div class="tooltip">backend-dev<br>点击查看上下文</div>
+                            </div>
+                            <div class="mini-avatar t" onclick="openModal()">T
+                                <div class="tooltip">tester</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 消息区域 -->
+                <div class="chat-messages">
+                    <div class="message-row self">
+                        <div class="avatar user">U</div>
+                        <div class="message-content">
+                            <div class="sender-name">user</div>
+                            <div class="bubble">帮我查看一下后端日志重构的进度</div>
+                            <div class="timestamp">10:23</div>
+                        </div>
+                    </div>
+
+                    <div class="message-row">
+                        <div class="avatar agent">B</div>
+                        <div class="message-content">
+                            <div class="sender-name">backend-dev</div>
+                            <div class="bubble">任务 #2 和 #4 已完成，正在进行最后的验证和清理工作。</div>
+                            <div class="timestamp">10:24</div>
+                        </div>
+                    </div>
+
+                    <div class="message-row self">
+                        <div class="avatar user">U</div>
+                        <div class="message-content">
+                            <div class="sender-name">user</div>
+                            <div class="bubble">@backend-dev 进度如何了？</div>
+                            <div class="timestamp">10:30</div>
+                        </div>
+                    </div>
+
+                    <div class="message-row">
+                        <div class="avatar agent">B</div>
+                        <div class="message-content">
+                            <div class="sender-name">backend-dev</div>
+                            <div class="bubble">正在验证日志格式，预计10分钟内完成。</div>
+                            <div class="timestamp">10:31</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 输入框 -->
+                <div class="chat-input">
+                    <input type="text" class="input-field" placeholder="发送消息..." value="">
+                    <button class="send-btn">发送</button>
+                </div>
+            </div>
+
+            <div class="action-hint">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                提示：点击顶部绿色头像 (B) 打开成员上下文面板
+            </div>
+        </div>
+
+        <!-- 成员上下文面板弹窗 -->
+        <div class="modal-overlay" id="contextModal">
+            <div class="context-panel">
+                <!-- 面板头部 -->
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <div class="panel-avatar">B</div>
+                        <div class="panel-title-text">
+                            <h3>backend-dev 的上下文</h3>
+                            <p>Session: abc123de...</p>
+                        </div>
+                    </div>
+                    <div class="panel-actions">
+                        <label class="toggle-label">
+                            <span class="toggle-text">自动刷新</span>
+                            <div class="toggle-switch">
+                                <input type="checkbox" checked>
+                                <span class="toggle-slider"></span>
+                            </div>
+                        </label>
+                        <button class="close-btn" onclick="closeModal()">
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 面板内容 -->
+                <div class="panel-content">
+                    <!-- User 消息 -->
+                    <div class="context-message user">
+                        <div class="context-bubble">
+                            <div class="context-role">
+                                用户
+                                <span class="context-time">10:15:32</span>
+                            </div>
+                            <div class="context-text">查看任务 #3 的状态，完成后向我汇报</div>
+                        </div>
+                    </div>
+
+                    <!-- Assistant 消息 -->
+                    <div class="context-message assistant">
+                        <div class="context-bubble">
+                            <div class="context-role">
+                                助手
+                                <span class="context-time">10:15:35</span>
+                            </div>
+                            <div class="context-text">我来检查任务 #3 的状态。根据记录，任务 #3 是"清理与验证"，当前状态为 in_progress，由 backend-dev 负责。</div>
+                        </div>
+                    </div>
+
+                    <!-- User 消息 -->
+                    <div class="context-message user">
+                        <div class="context-bubble">
+                            <div class="context-role">
+                                用户
+                                <span class="context-time">10:16:08</span>
+                            </div>
+                            <div class="context-text">具体完成了哪些工作？</div>
+                        </div>
+                    </div>
+
+                    <!-- Assistant 消息 -->
+                    <div class="context-message assistant">
+                        <div class="context-bubble">
+                            <div class="context-role">
+                                助手
+                                <span class="context-time">10:16:12</span>
+                            </div>
+                            <div class="context-text">任务 #3 包含以下子任务：
+1. 运行构建验证 (npm run build)
+2. 运行时日志格式验证
+3. 删除旧的 LoggerService
+4. 更新 CLAUDE.md 版本号</div>
+                        </div>
+                    </div>
+
+                    <!-- User 消息 -->
+                    <div class="context-message user">
+                        <div class="context-bubble">
+                            <div class="context-role">
+                                用户
+                                <span class="context-time">10:18:45</span>
+                            </div>
+                            <div class="context-text">继续执行构建验证</div>
+                        </div>
+                    </div>
+
+                    <!-- Assistant 消息 -->
+                    <div class="context-message assistant">
+                        <div class="context-bubble">
+                            <div class="context-role">
+                                助手
+                                <span class="context-time">10:18:52</span>
+                            </div>
+                            <div class="context-text">✅ 构建验证通过！
+- TypeScript 编译成功
+- 无类型错误
+- 输出目录: dist/ 已生成</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 面板底部 -->
+                <div class="panel-footer">
+                    <span class="message-count">共 6 条消息</span>
+                    <button class="refresh-btn">
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        刷新
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openModal() {
+            document.getElementById('contextModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('contextModal').classList.remove('active');
+        }
+
+        // 点击遮罩关闭
+        document.getElementById('contextModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // ESC 键关闭
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

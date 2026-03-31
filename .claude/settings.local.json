@@ -102,7 +102,17 @@
       "Bash(tar -tzf /tmp/claude-teams-gui-0.3.3.tgz)",
       "Bash(git pull:*)",
       "Bash(git stash:*)",
-      "Bash(xargs -r kill)"
+      "Bash(xargs -r kill)",
+      "Bash(tmux capture-pane:*)",
+      "Bash(2)",
+      "Bash(npm show:*)",
+      "Bash(mkdir -p ~/.claude/teams/claude-teams-gui/sessions)",
+      "Bash(~/.claude/teams/claude-teams-gui/sessions/frontend-dev.json)",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_press_key"
     ]
   },
   "hooks": {
@@ -157,6 +167,18 @@
           {
             "type": "command",
             "command": "node ./.claude/hooks/stop-hook.js"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./hooks/subagent-register.cjs",
+            "timeout": 10
           }
         ]
       }
