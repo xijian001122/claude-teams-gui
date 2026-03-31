@@ -41,7 +41,7 @@ When working with multiple Claude Code Teams simultaneously (e.g., developing se
 
 ## Current Version
 
-**v0.2.5**
+**v0.3.30**
 
 See [CHANGELOG.md](./CHANGELOG.md) for release history.
 

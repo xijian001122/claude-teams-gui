@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.30](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.29...v0.3.30) (2026-03-31)
+
+### Features
+* **成员上下文面板增强**: 面板宽度扩大至 1200px，支持 Markdown 渲染、工具调用卡片、思考过程折叠
+* **SendMessage 专用渲染**: 工具调用卡片支持 SendMessage 专用蓝色主题，显示 summary 标题和 content 内容
+* **消息气泡展开优化**: 长内容展开按钮移至时间戳同行右对齐，使用 DOM 高度检测替代字符数判断
+* **上下文面板发消息**: 支持在成员上下文面板直接发送消息给成员
+
+### Bug Fixes
+* **重复消息修复**: 修复从上下文面板发消息导致团队聊天出现重复消息（ID 不一致问题）
+* **展开状态持久化**: 修复 WebSocket 实时刷新重置折叠展开状态
+* **气泡样式修复**: 修复气泡内容溢出导致水平滚动条和文字穿透气泡
+* **双滚动条消除**: 移除气泡高度限制，完整展示内容
+* **默认展开所有折叠项**: 上下文面板加载时默认展开所有工具调用和思考过程
+
 ### [0.3.29](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.28...v0.3.29) (2026-03-30)
 
 ### Features
