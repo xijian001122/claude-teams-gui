@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slash Command Picker UI 设计方案</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f3f4f6;
+            --bg-tertiary: #e5e7eb;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --accent: #3b82f6;
+            --chip-bg: #e0e7ff;
+            --chip-text: #4338ca;
+            --popup-bg: #ffffff;
+            --group-header-bg: #f8f9fa;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+            --bg-tertiary: #374151;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --border-color: #374151;
+            --accent: #60a5fa;
+            --chip-bg: #312e81;
+            --chip-text: #a5b4fc;
+            --popup-bg: #1f2937;
+            --group-header-bg: #252542;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            padding: 40px 20px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        /* 主题切换 */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-primary);
+            z-index: 100;
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--accent);
+        }
+
+        /* 导航 */
+        .toc {
+            background: var(--bg-secondary);
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        .toc a {
+            color: var(--accent);
+            text-decoration: none;
+            margin: 0 12px;
+            font-size: 14px;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        /* 设计卡片 */
+        .design-card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 32px;
+            border: 1px solid var(--border-color);
+        }
+
+        .design-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .design-desc {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .design-desc strong {
+            color: var(--accent);
+        }
+
+        /* 场景展示区域 */
+        .scenes-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        @media (max-width: 1100px) {
+            .scenes-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .scene-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        /* 聊天界面模拟 */
+        .chat-mock {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            height: 280px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            height: 48px;
+            padding: 0 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .message-row {
+            display: flex;
+            margin-bottom: 12px;
+            align-items: flex-start;
+        }
+
+        .message-row.self {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            margin: 0 8px;
+            flex-shrink: 0;
+        }
+
+        .avatar.user { background: #3b82f6; }
+        .avatar.agent { background: #10b981; }
+
+        .message-content {
+            max-width: 80%;
+        }
+
+        .sender-name {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+        }
+
+        .message-row.self .sender-name {
+            text-align: right;
+        }
+
+        .bubble {
+            padding: 8px 12px;
+            border-radius: 14px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .message-row:not(.self) .bubble {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-row.self .bubble {
+            background: #3b82f6;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        /* 输入框区域 */
+        .chat-input-area {
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        /* 方案 A - Chip 在上方 */
+        .chip-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            min-height: 0;
+        }
+
+        .chip-container.has-chip {
+            min-height: 28px;
+        }
+
+        .command-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: var(--chip-bg);
+            color: var(--chip-text);
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .command-chip .remove {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.15);
+            color: currentColor;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            padding: 0;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        .input-field {
+            flex: 1;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-size: 13px;
+            line-height: 1.5;
+            outline: none;
+            min-height: 36px;
+        }
+
+        .input-field:focus {
+            border-color: var(--accent);
+        }
+
+        /* 方案 B - contenteditable */
+        .editable-input {
+            flex: 1;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-size: 13px;
+            line-height: 1.5;
+            min-height: 36px;
+            max-height: 80px;
+            overflow-y: auto;
+            outline: none;
+        }
+
+        .editable-input:focus {
+            border-color: var(--accent);
+        }
+
+        .editable-input .inline-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background: var(--chip-bg);
+            color: var(--chip-text);
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+
+        .editable-input .inline-chip .remove {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.15);
+            color: currentColor;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            padding: 0;
+            margin-left: 2px;
+        }
+
+        .send-btn {
+            padding: 8px 14px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            font-size: 13px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover {
+            background: #2563eb;
+        }
+
+        /* 命令弹窗 */
+        .slash-popup {
+            position: absolute;
+            bottom: 100%;
+            left: 12px;
+            right: 68px;
+            background: var(--popup-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            max-height: 240px;
+            overflow-y: auto;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            z-index: 50;
+        }
+
+        .popup-header {
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            background: var(--group-header-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .popup-group {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .popup-group:last-child {
+            border-bottom: none;
+        }
+
+        .popup-group-title {
+            padding: 6px 12px;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: var(--group-header-bg);
+        }
+
+        .popup-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .popup-item:hover,
+        .popup-item.selected {
+            background: var(--bg-secondary);
+        }
+
+        .popup-item-cmd {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+
+        .popup-item-desc {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-align: right;
+        }
+
+        .popup-more {
+            padding: 6px 12px;
+            font-size: 11px;
+            color: var(--accent);
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .popup-more:hover {
+            text-decoration: underline;
+        }
+
+        /* 对比表格 */
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        .compare-table th,
+        .compare-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .compare-table th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .compare-table td {
+            font-size: 13px;
+            vertical-align: top;
+        }
+
+        .pros { color: #22c55e; }
+        .cons { color: #ef4444; }
+        .highlight {
+            background: rgba(59, 130.5, 246, 0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        [data-theme="dark"] .pros { color: #86efac; }
+        [data-theme="dark"] .cons { color: #fca5a5; }
+
+        /* 推荐框 */
+        .recommend-box {
+            background: rgba(34, 197, 94, 0.1);
+            border-left: 4px solid #22c55e;
+            padding: 16px;
+            border-radius: 4px;
+            margin-top: 16px;
+        }
+
+        .recommend-box ul {
+            margin: 8px 0 0 20px;
+        }
+
+        .recommend-box li {
+            margin: 4px 0;
+        }
+
+        /* 气泡效果展示 */
+        .bubble-preview {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .bubble-preview-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        /* 空状态占位 */
+        .empty-placeholder {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <span id="theme-icon">🌙</span>
+        <span id="theme-text">切换暗色</span>
+    </button>
+
+    <div class="container">
+        <h1>Slash Command Picker UI 设计方案</h1>
+        <p class="subtitle">两种命令选中后在输入框中的展示形式对比</p>
+
+        <nav class="toc">
+            <a href="#方案A">方案 A</a> |
+            <a href="#方案B">方案 B</a> |
+            <a href="#对比">方案对比</a> |
+            <a href="#推荐">推荐方案</a>
+        </nav>
+
+        <!-- 方案 A -->
+        <section id="方案A" class="design-card">
+            <div class="design-title">方案 A：混合布局（Chip 在 textarea 上方）</div>
+            <div class="design-desc">
+                选中的命令以 chip 形式显示在 textarea 上方独立区域，textarea 保持原生输入体验。
+                <strong>约束：一次只能选择一个命令，选中新命令会替换旧命令。</strong>
+            </div>
+
+            <div class="scenes-row">
+                <!-- 场景 1: 已选命令 + 参数 -->
+                <div>
+                    <div class="scene-label">场景 1：已选命令 + 输入参数</div>
+                    <div class="chat-mock">
+                        <div class="chat-header">claude-teams-gui</div>
+                        <div class="chat-messages">
+                            <div class="message-row self">
+                                <div class="avatar user">U</div>
+                                <div class="message-content">
+                                    <div class="sender-name">user</div>
+                                    <div class="bubble">帮我检查一下当前任务状态</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chat-input-area">
+                            <div class="chip-container has-chip">
+                                <span class="command-chip">
+                                    /opsx:apply
+                                    <button class="remove">&times;</button>
+                                </span>
+                            </div>
+                            <div class="input-row">
+                                <div class="input-field" style="display:flex;align-items:center;">member-context-enhancement</div>
+                                <button class="send-btn">发送</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 场景 2: 输入 / 弹窗 -->
+                <div>
+                    <div class="scene-label">场景 2：输入 / 时弹出命令选择器</div>
+                    <div class="chat-mock">
+                        <div class="chat-header">claude-teams-gui</div>
+                        <div class="chat-messages"></div>
+                        <div class="chat-input-area">
+                            <div class="chip-container"></div>
+                            <div class="input-row">
+                                <div class="input-field" style="display:flex;align-items:center;">/</div>
+                                <button class="send-btn">发送</button>
+                            </div>
+                            <div class="slash-popup">
+                                <div class="popup-header">
+                                    <span>命令列表</span>
+                                    <span style="font-weight:normal;">共 15 条</span>
+                                </div>
+                                <div class="popup-group">
+                                    <div class="popup-group-title">Commands (5)</div>
+                                    <div class="popup-item selected">
+                                        <span class="popup-item-cmd">/opsx:apply</span>
+                                        <span class="popup-item-desc">应用变更</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/opsx:propose</span>
+                                        <span class="popup-item-desc">创建提案</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/opsx:archive</span>
+                                        <span class="popup-item-desc">归档变更</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/opsx:explore</span>
+                                        <span class="popup-item-desc">探索模式</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/teams:apply</span>
+                                        <span class="popup-item-desc">应用团队配置</span>
+                                    </div>
+                                </div>
+                                <div class="popup-group">
+                                    <div class="popup-group-title">Skills (5)</div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/frontend-dev</span>
+                                        <span class="popup-item-desc">前端开发</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/backend-dev</span>
+                                        <span class="popup-item-desc">后端开发</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/git-workflow</span>
+                                        <span class="popup-item-desc">Git 工作流</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/project-arch</span>
+                                        <span class="popup-item-desc">项目架构</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/websocket-protocol</span>
+                                        <span class="popup-item-desc">WebSocket 协议</span>
+                                    </div>
+                                </div>
+                                <div class="popup-more">+4 更多</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 场景 3: 空输入框 -->
+                <div>
+                    <div class="scene-label">场景 3：空输入框初始状态</div>
+                    <div class="chat-mock">
+                        <div class="chat-header">claude-teams-gui</div>
+                        <div class="chat-messages"></div>
+                        <div class="chat-input-area">
+                            <div class="chip-container"></div>
+                            <div class="input-row">
+                                <div class="input-field empty-placeholder" style="display:flex;align-items:center;">输入 / 查看可用命令...</div>
+                                <button class="send-btn" disabled style="opacity:0.5;cursor:not-allowed;">发送</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bubble-preview">
+                <div class="bubble-preview-title">发送后在聊天气泡中的效果</div>
+                <div class="message-row self">
+                    <div class="avatar user">U</div>
+                    <div class="message-content">
+                        <div class="sender-name">user</div>
+                        <div class="bubble"><span style="opacity:0.8;font-weight:500;">/opsx:apply</span> member-context-enhancement</div>
+                        <div class="sender-name" style="margin-top:4px;">刚刚</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 方案 B -->
+        <section id="方案B" class="design-card">
+            <div class="design-title">方案 B：ContentEditable 混排</div>
+            <div class="design-desc">
+                使用 contenteditable div 替代 textarea，命令以 inline chip 和文字混排在同一行。
+                <strong>约束：一次只能选择一个命令，选中新命令会替换旧命令。</strong>
+            </div>
+
+            <div class="scenes-row">
+                <!-- 场景 1: 已选命令 + 参数 -->
+                <div>
+                    <div class="scene-label">场景 1：已选命令 + 输入参数</div>
+                    <div class="chat-mock">
+                        <div class="chat-header">claude-teams-gui</div>
+                        <div class="chat-messages">
+                            <div class="message-row self">
+                                <div class="avatar user">U</div>
+                                <div class="message-content">
+                                    <div class="sender-name">user</div>
+                                    <div class="bubble">帮我检查一下当前任务状态</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chat-input-area">
+                            <div class="input-row">
+                                <div class="editable-input" style="display:flex;align-items:center;flex-wrap:wrap;">
+                                    <span class="inline-chip">
+                                        /opsx:apply
+                                        <button class="remove">&times;</button>
+                                    </span>
+                                    <span>member-context-enhancement</span>
+                                </div>
+                                <button class="send-btn">发送</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 场景 2: 输入 / 弹窗 -->
+                <div>
+                    <div class="scene-label">场景 2：输入 / 时弹出命令选择器</div>
+                    <div class="chat-mock">
+                        <div class="chat-header">claude-teams-gui</div>
+                        <div class="chat-messages"></div>
+                        <div class="chat-input-area">
+                            <div class="input-row">
+                                <div class="editable-input" style="display:flex;align-items:center;">/</div>
+                                <button class="send-btn">发送</button>
+                            </div>
+                            <div class="slash-popup">
+                                <div class="popup-header">
+                                    <span>命令列表</span>
+                                    <span style="font-weight:normal;">共 15 条</span>
+                                </div>
+                                <div class="popup-group">
+                                    <div class="popup-group-title">Commands (5)</div>
+                                    <div class="popup-item selected">
+                                        <span class="popup-item-cmd">/opsx:apply</span>
+                                        <span class="popup-item-desc">应用变更</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/opsx:propose</span>
+                                        <span class="popup-item-desc">创建提案</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/opsx:archive</span>
+                                        <span class="popup-item-desc">归档变更</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/opsx:explore</span>
+                                        <span class="popup-item-desc">探索模式</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/teams:apply</span>
+                                        <span class="popup-item-desc">应用团队配置</span>
+                                    </div>
+                                </div>
+                                <div class="popup-group">
+                                    <div class="popup-group-title">Skills (5)</div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/frontend-dev</span>
+                                        <span class="popup-item-desc">前端开发</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/backend-dev</span>
+                                        <span class="popup-item-desc">后端开发</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/git-workflow</span>
+                                        <span class="popup-item-desc">Git 工作流</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/project-arch</span>
+                                        <span class="popup-item-desc">项目架构</span>
+                                    </div>
+                                    <div class="popup-item">
+                                        <span class="popup-item-cmd">/websocket-protocol</span>
+                                        <span class="popup-item-desc">WebSocket 协议</span>
+                                    </div>
+                                </div>
+                                <div class="popup-more">+4 更多</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 场景 3: 空输入框 -->
+                <div>
+                    <div class="scene-label">场景 3：空输入框初始状态</div>
+                    <div class="chat-mock">
+                        <div class="chat-header">claude-teams-gui</div>
+                        <div class="chat-messages"></div>
+                        <div class="chat-input-area">
+                            <div class="input-row">
+                                <div class="editable-input empty-placeholder" style="display:flex;align-items:center;">输入 / 查看可用命令...</div>
+                                <button class="send-btn" disabled style="opacity:0.5;cursor:not-allowed;">发送</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bubble-preview">
+                <div class="bubble-preview-title">发送后在聊天气泡中的效果</div>
+                <div class="message-row self">
+                    <div class="avatar user">U</div>
+                    <div class="message-content">
+                        <div class="sender-name">user</div>
+                        <div class="bubble"><span style="opacity:0.8;font-weight:500;">/opsx:apply</span> member-context-enhancement</div>
+                        <div class="sender-name" style="margin-top:4px;">刚刚</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 对比 -->
+        <section id="对比" class="design-card">
+            <div class="design-title">方案对比</div>
+            <table class="compare-table">
+                <thead>
+                    <tr>
+                        <th>维度</th>
+                        <th>方案 A（Chip 上方分离）</th>
+                        <th>方案 B（ContentEditable 混排）</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>实现复杂度</strong></td>
+                        <td class="pros">低 — textarea 原生，无需处理光标</td>
+                        <td class="cons">高 — 需处理 contenteditable 光标、选区、键盘事件</td>
+                    </tr>
+                    <tr>
+                        <td><strong>交互自然度</strong></td>
+                        <td class="cons">一般 — 命令和参数视觉上分离</td>
+                        <td class="pros">高 — chip 与文字同一行，更像现代编辑器</td>
+                    </tr>
+                    <tr>
+                        <td><strong>可访问性</strong></td>
+                        <td class="pros">好 — 原生 textarea 支持屏幕阅读器</td>
+                        <td class="cons">较差 — contenteditable 需额外做 a11y</td>
+                    </tr>
+                    <tr>
+                        <td><strong>扩展性</strong></td>
+                        <td class="pros">好 — 未来支持多命令时上方可横向扩展</td>
+                        <td class="cons">一般 — 多 chip 混排时行内空间管理复杂</td>
+                    </tr>
+                    <tr>
+                        <td><strong>兼容性与 bug 风险</strong></td>
+                        <td class="pros">低 — 几乎无 textarea 相关 bug</td>
+                        <td class="cons">高 — contenteditable 跨浏览器行为不一致</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- 推荐 -->
+        <section id="推荐" class="design-card">
+            <div class="design-title">推荐方案</div>
+            <div class="design-desc">
+                综合项目现状和开发成本，推荐采用 <span class="highlight">方案 A（Chip 在 textarea 上方）</span>。
+            </div>
+            <div class="recommend-box">
+                <strong>推荐理由：</strong>
+                <ul>
+                    <li><strong>开发成本低</strong>：基于现有 textarea 输入框，无需引入复杂的 contenteditable 逻辑</li>
+                    <li><strong>稳定性高</strong>：避免了 contenteditable 在光标定位、选区管理和键盘事件上的各种边缘情况</li>
+                    <li><strong>扩展性好</strong>：即使未来需要支持多命令，上方的 chip 区域也能自然横向扩展</li>
+                    <li><strong>与现有代码更一致</strong>：项目当前输入框已使用 textarea，方案 A 的改动量最小</li>
+                </ul>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                html.removeAttribute('data-theme');
+                document.getElementById('theme-icon').textContent = '🌙';
+                document.getElementById('theme-text').textContent = '切换暗色';
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                document.getElementById('theme-icon').textContent = '☀️';
+                document.getElementById('theme-text').textContent = '切换亮色';
+            }
+        }
+
+        // 默认暗色模式（与现有 demo 保持一致）
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.getElementById('theme-icon').textContent = '☀️';
+        document.getElementById('theme-text').textContent = '切换亮色';
+    </script>
+</body>
+</html>

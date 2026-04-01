@@ -1,9 +1,54 @@
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
+import type { CommandsResponse, CommandItem } from '@shared/types';
 import { api } from '../utils/api';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ToolUseCard } from './ToolUseCard';
 import { ThinkingBlock } from './ThinkingBlock';
 import { useWebSocket } from '../hooks/useWebSocket';
+
+// --- Contenteditable helpers (same as InputBox) ---
+function getPlainText(element: HTMLElement): string {
+  return element.innerText || element.textContent || '';
+}
+
+function getFullText(element: HTMLElement): string {
+  const chips = element.querySelectorAll('.cmd-chip');
+  let text = element.innerHTML;
+  chips.forEach(chip => {
+    const chipText = chip.textContent || '';
+    const cleanText = chipText.replace('×', '').trim();
+    text = text.replace(chip.outerHTML, cleanText + ' ');
+  });
+  const temp = document.createElement('div');
+  temp.innerHTML = text;
+  return temp.textContent || temp.innerText || '';
+}
+
+function setCursorAtEnd(element: HTMLElement) {
+  const range = document.createRange();
+  const selection = window.getSelection();
+  range.selectNodeContents(element);
+  range.collapse(false);
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+function removeChipBeforeCursor(element: HTMLElement): boolean {
+  const selection = window.getSelection();
+  if (!selection?.rangeCount) return false;
+  const range = selection.getRangeAt(0);
+  const node = range.startContainer;
+  const offset = range.startOffset;
+  if (node.nodeType === Node.TEXT_NODE && offset === 0) {
+    const prevNode = node.previousSibling;
+    if (prevNode?.nodeType === Node.ELEMENT_NODE &&
+        (prevNode as Element).classList?.contains('cmd-chip')) {
+      prevNode.remove();
+      return true;
+    }
+  }
+  return false;
+}
 
 type ConversationMessageType = 'text' | 'tool_use' | 'tool_result' | 'thinking';
 
@@ -26,23 +71,51 @@ interface MemberConversation {
 interface MemberConversationPanelProps {
   teamName: string;
   memberName: string;
+  commands: CommandsResponse;
   onClose: () => void;
 }
 
 export function MemberConversationPanel({
   teamName,
   memberName,
+  commands,
   onClose
 }: MemberConversationPanelProps) {
   const [conversation, setConversation] = useState<MemberConversation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sendLoading, setSendLoading] = useState(false);
-  const [messageInput, setMessageInput] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
+
+  // Slash command state
+  const [showCommandPopup, setShowCommandPopup] = useState(false);
+  const [commandQuery, setCommandQuery] = useState('');
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+  const [hasCommandChip, setHasCommandChip] = useState(false);
+  const editableRef = useRef<HTMLDivElement>(null);
+  const selectedItemRef = useRef<HTMLDivElement>(null);
+
   const { lastMessage } = useWebSocket();
   const contentRef = useRef<HTMLDivElement>(null);
   const expandedRef = useRef<Set<string>>(new Set());
+
+  // Filter commands based on query
+  const filteredCommands = commands.commands.filter(cmd =>
+    cmd.name.toLowerCase().includes(commandQuery.toLowerCase())
+  );
+  const filteredSkills = commands.skills.filter(skill =>
+    skill.name.toLowerCase().includes(commandQuery.toLowerCase())
+  );
+  const allFilteredItems: CommandItem[] = [...filteredCommands, ...filteredSkills];
+  const totalFiltered = filteredCommands.length + filteredSkills.length;
+  const totalAvailable = commands.commands.length + commands.skills.length;
+
+  // Auto-scroll selected command item into view
+  useEffect(() => {
+    if (showCommandPopup && selectedItemRef.current) {
+      selectedItemRef.current.scrollIntoView({ block: 'nearest' });
+    }
+  }, [selectedCommandIndex, showCommandPopup]);
 
   const toggleExpanded = (key: string) => {
     const next = new Set(expandedRef.current);
@@ -53,12 +126,32 @@ export function MemberConversationPanel({
     setConversation(prev => prev ? { ...prev } : prev);
   };
 
+  // Check if user is near the bottom of the content area
+  const isNearBottom = useCallback((threshold = 80) => {
+    if (!contentRef.current) return true;
+    const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
+    return scrollHeight - scrollTop - clientHeight < threshold;
+  }, []);
+
   // Scroll to bottom of content
   const scrollToBottom = useCallback(() => {
     if (contentRef.current) {
       contentRef.current.scrollTop = contentRef.current.scrollHeight;
     }
   }, []);
+
+  // Handle copy: strip HTML styles, paste as plain text
+  const handleCopy = useCallback((e: ClipboardEvent) => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
+    const text = selection.toString();
+    if (!text) return;
+    e.preventDefault();
+    e.clipboardData?.setData('text/plain', text);
+  }, []);
+
+  // Track if this is the initial load
+  const initialLoadRef = useRef(true);
 
   const loadConversation = useCallback(async () => {
     try {
@@ -76,8 +169,11 @@ export function MemberConversationPanel({
         expandedRef.current = allKeys;
         setConversation(response.data);
         setError(null);
-        // Scroll to bottom after conversation loads
-        setTimeout(scrollToBottom, 0);
+        // Only scroll to bottom on initial load, otherwise respect user's scroll position
+        if (initialLoadRef.current) {
+          setTimeout(scrollToBottom, 0);
+          initialLoadRef.current = false;
+        }
       } else {
         setError('无法加载对话');
       }
@@ -95,6 +191,14 @@ export function MemberConversationPanel({
     loadConversation();
   }, [loadConversation]);
 
+  // Auto-refresh every 3 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      loadConversation();
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [loadConversation]);
+
   // Real-time update via WebSocket
   useEffect(() => {
     if (!lastMessage) return;
@@ -104,9 +208,12 @@ export function MemberConversationPanel({
       // Check if message is related to this member
       const msg = lastMessage.message;
       if (msg && (msg.from === memberName || msg.to === memberName)) {
+        const wasNearBottom = isNearBottom();
         loadConversation();
-        // Scroll to bottom after new message arrives
-        setTimeout(scrollToBottom, 100);
+        // Only scroll to bottom if user was already at the bottom
+        if (wasNearBottom) {
+          setTimeout(scrollToBottom, 100);
+        }
       }
     }
   }, [lastMessage, teamName, memberName, loadConversation, scrollToBottom]);
@@ -124,23 +231,87 @@ export function MemberConversationPanel({
     }
   };
 
+  // --- Slash command handlers ---
+  const handleEditableInput = () => {
+    if (!editableRef.current) return;
+    const text = getPlainText(editableRef.current);
+    const chipExists = editableRef.current.querySelector('.cmd-chip') !== null;
+    setHasCommandChip(chipExists);
+
+    const lastSlashIndex = text.lastIndexOf('/');
+    if (lastSlashIndex !== -1 && !chipExists) {
+      const afterSlash = text.slice(lastSlashIndex + 1);
+      if (!afterSlash.includes(' ') && afterSlash.length >= 0) {
+        setShowCommandPopup(true);
+        setCommandQuery(afterSlash);
+        setSelectedCommandIndex(0);
+      } else {
+        setShowCommandPopup(false);
+      }
+    } else {
+      setShowCommandPopup(false);
+    }
+  };
+
+  const insertCommandChip = useCallback((item: CommandItem) => {
+    if (!editableRef.current) return;
+    const text = getPlainText(editableRef.current);
+    const lastSlashIndex = text.lastIndexOf('/');
+    const before = text.slice(0, lastSlashIndex);
+    const after = text.slice(lastSlashIndex + 1 + commandQuery.length);
+
+    const existingChip = editableRef.current.querySelector('.cmd-chip');
+    if (existingChip) existingChip.remove();
+
+    const chipHtml = `<span contenteditable="false" class="cmd-chip">/${item.name}<button class="chip-remove" onclick="this.parentElement.remove()">×</button></span>`;
+    editableRef.current.innerHTML = before + chipHtml + (after ? ' ' + after : ' ');
+
+    setShowCommandPopup(false);
+    setHasCommandChip(true);
+    setTimeout(() => {
+      if (editableRef.current) {
+        editableRef.current.focus();
+        setCursorAtEnd(editableRef.current);
+      }
+    }, 0);
+  }, [commandQuery]);
+
   const handleSendMessage = async () => {
-    if (!messageInput.trim()) return;
+    if (!editableRef.current) return;
+    const fullText = getFullText(editableRef.current).trim();
+    if (!fullText || sendLoading) return;
 
     setSendLoading(true);
     setSendError(null);
 
     try {
       const response = await api.post(`/teams/${teamName}/messages`, {
-        content: messageInput.trim(),
+        content: fullText,
         to: memberName,
         contentType: 'text'
       });
 
       if (response.success) {
-        setMessageInput('');
-        // Refresh conversation after sending (WebSocket will also trigger update)
-        await loadConversation();
+        editableRef.current.innerHTML = '';
+        setHasCommandChip(false);
+        setShowCommandPopup(false);
+        // Optimistic update: append sent message to local state immediately
+        setConversation(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            messages: [...prev.messages, {
+              role: 'user' as const,
+              type: 'text' as const,
+              content: fullText,
+              timestamp: new Date().toISOString(),
+              senderName: 'user'
+            }]
+          };
+        });
+        setTimeout(scrollToBottom, 50);
+        // Background refresh to get the server-persisted version
+        setTimeout(() => loadConversation(), 1500);
       } else {
         setSendError(response.error || '发送失败');
       }
@@ -153,7 +324,36 @@ export function MemberConversationPanel({
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (showCommandPopup && allFilteredItems.length > 0) {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedCommandIndex(i => (i + 1) % allFilteredItems.length);
+          return;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedCommandIndex(i => (i - 1 + allFilteredItems.length) % allFilteredItems.length);
+          return;
+        case 'Enter':
+        case 'Tab':
+          e.preventDefault();
+          insertCommandChip(allFilteredItems[selectedCommandIndex]);
+          return;
+        case 'Escape':
+          setShowCommandPopup(false);
+          return;
+      }
+    }
+
+    if (e.key === 'Backspace' && editableRef.current) {
+      if (removeChipBeforeCursor(editableRef.current)) {
+        e.preventDefault();
+        setHasCommandChip(editableRef.current.querySelector('.cmd-chip') !== null);
+        return;
+      }
+    }
+
+    if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -285,7 +485,7 @@ export function MemberConversationPanel({
         </div>
 
         {/* Content */}
-        <div ref={contentRef} className="flex-1 overflow-y-auto p-4">
+        <div ref={contentRef} className="flex-1 overflow-y-auto p-4" onCopy={handleCopy as any}>
           {loading ? (
             <div className="flex items-center justify-center h-40">
               <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full" />
@@ -365,20 +565,72 @@ export function MemberConversationPanel({
         )}
 
         {/* Message Input Footer */}
-        <div className="px-4 py-3 border-t border-[var(--border-color)] bg-[var(--bg-secondary)]">
+        <div className="px-4 py-3 border-t border-[var(--border-color)] bg-[var(--bg-secondary)] relative">
+          {/* Command popup */}
+          {showCommandPopup && (
+            <div className="command-popup" style={{
+              position: 'absolute',
+              bottom: '100%',
+              left: '16px',
+              right: '16px',
+              marginBottom: '8px'
+            }}>
+              <div className="command-popup-header">
+                <span>命令列表</span>
+                <span className="command-popup-count">
+                  {totalFiltered > 0 ? `${totalFiltered}/${totalAvailable}` : '无匹配'}
+                </span>
+              </div>
+              {filteredCommands.length > 0 && (
+                <div className="command-popup-group">
+                  <div className="command-popup-group-title">Commands ({filteredCommands.length})</div>
+                  {filteredCommands.map((cmd, index) => (
+                    <div
+                      key={cmd.name}
+                      ref={selectedCommandIndex === index ? selectedItemRef : null}
+                      className={`command-popup-item ${selectedCommandIndex === index ? 'selected' : ''}`}
+                      onClick={() => insertCommandChip(cmd)}
+                    >
+                      <span className="command-popup-name">/{cmd.name}</span>
+                      <span className="command-popup-desc">{cmd.description}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {filteredSkills.length > 0 && (
+                <div className="command-popup-group">
+                  <div className="command-popup-group-title">Skills ({filteredSkills.length})</div>
+                  {filteredSkills.map((skill, index) => (
+                    <div
+                      key={skill.name}
+                      ref={selectedCommandIndex === filteredCommands.length + index ? selectedItemRef : null}
+                      className={`command-popup-item ${selectedCommandIndex === filteredCommands.length + index ? 'selected' : ''}`}
+                      onClick={() => insertCommandChip(skill)}
+                    >
+                      <span className="command-popup-name">/{skill.name}</span>
+                      <span className="command-popup-desc">{skill.description}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {totalFiltered === 0 && (
+                <div className="command-popup-empty">无匹配命令</div>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={messageInput}
-              onChange={(e) => setMessageInput((e.target as HTMLInputElement).value)}
+            <div
+              ref={editableRef}
+              contentEditable={!sendLoading}
+              onInput={handleEditableInput}
               onKeyDown={handleKeyDown}
-              placeholder={`发送消息给 ${memberName}...`}
-              disabled={sendLoading}
-              className="flex-1 px-3 py-2 text-sm bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className={`editable-input flex-1 ${sendLoading ? 'bg-[var(--bg-secondary)] opacity-60 cursor-not-allowed' : ''}`}
+              data-placeholder={`发送消息给 ${memberName}... 输入 / 查看命令`}
+              suppressContentEditableWarning
             />
             <button
               onClick={handleSendMessage}
-              disabled={sendLoading || !messageInput.trim()}
+              disabled={sendLoading}
               className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors"
             >
               {sendLoading ? (

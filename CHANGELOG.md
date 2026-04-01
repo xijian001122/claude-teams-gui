@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.31](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.30...v0.3.31) (2026-04-01)
+
+### Features
+* **成员上下文面板快捷指令**: 输入框支持 `/` 弹出命令选择器，支持 Commands 和 Skills 分类，键盘导航 + Chip 插入
+* **头像点击跳转**: 聊天窗点击成员头像直接打开对应上下文面板
+* **Enter/Ctrl+Enter 换行**: Enter 发送消息，Ctrl/Shift+Enter 换行
+* **上下文面板消息发送**: 支持在成员上下文面板内直接发送消息给成员
+
+### Bug Fixes
+* **成员回复不显示**: 修复 jsonl scan 只检查第一行导致匹配旧 session 的问题，改为检查前 20 行
+* **GUI 消息不显示在上下文面板**: 修复 conversation 端点只读 JSONL 不读 SQLite 的问题，合并两个数据源
+* **刷新自动滚动**: 修复上下文面板每 3 秒刷新强制滚到底部的问题，改为仅首次加载和底部附近时滚动
+* **复制携带样式**: 上下文面板复制内容不再携带 HTML 格式
+* **esbuild 替换 tsc**: 服务端构建从 tsc 切换为 esbuild，修复 npm start 启动失败
+
 ### [0.3.30](https://github.com/xijian001122/claude-teams-gui/compare/v0.3.29...v0.3.30) (2026-03-31)
 
 ### Features
