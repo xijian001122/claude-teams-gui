@@ -20,6 +20,7 @@ import permissionResponseRoutes from './routes/permission-response';
 import tasksRoutes, { globalTasksRoutes } from './routes/tasks';
 import { logsRoutes, hooksRoutes } from './routes';
 import memberSessionRoutes from './routes/member-session';
+import { commandsRoutes } from './routes/commands';
 
 export interface ServerOptions {
   config: AppConfig;
@@ -189,7 +190,8 @@ export async function createServer(options: ServerOptions) {
   fastify.register(archiveRoutes, { prefix: '/api/archive', db, dataDir });
   fastify.register(logsRoutes, { prefix: '/api/logs', configService });
   fastify.register(hooksRoutes, { prefix: '/api/hooks', fastify });
-  fastify.register(memberSessionRoutes, { prefix: '/api/teams', teamsPath: config.teamsPath });
+  fastify.register(memberSessionRoutes, { prefix: '/api/teams', teamsPath: config.teamsPath, db });
+  fastify.register(commandsRoutes, { prefix: '/api/commands' });
 
   // Create WebSocket logger
   const wsLog = createLogger({ module: 'WebSocket', shorthand: 's.ws' });

@@ -265,14 +265,31 @@ export class SessionReaderService {
       for (const f of files) {
         try {
           const fd = openSync(join(projectDir, f), 'r');
-          const buf = Buffer.alloc(4096);
-          const bytesRead = readSync(fd, buf, 0, 4096, 0);
+          const buf = Buffer.alloc(16384); // Read more to cover header entries
+          const bytesRead = readSync(fd, buf, 0, 16384, 0);
           closeSync(fd);
 
-          const firstLine = buf.toString('utf8', 0, bytesRead).split('\n')[0];
-          const entry = JSON.parse(firstLine);
+          // Check first 20 lines for teamName/agentName match
+          // (first line may be file-history-snapshot without identity fields)
+          const text = buf.toString('utf8', 0, bytesRead);
+          const lines = text.split('\n');
+          let matched = false;
 
-          if (entry.teamName === teamName && entry.agentName === memberName) {
+          for (let i = 0; i < Math.min(lines.length, 20); i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            try {
+              const entry = JSON.parse(line);
+              if (entry.teamName === teamName && entry.agentName === memberName) {
+                matched = true;
+                break;
+              }
+            } catch {
+              // Skip malformed lines
+            }
+          }
+
+          if (matched) {
             const stat = statSync(join(projectDir, f));
             if (stat.mtimeMs > bestTime) {
               bestMatch = f.replace('.jsonl', '');

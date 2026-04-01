@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { Team, Message, TeamMember, MemberStatusInfo } from '@shared/types';
+import type { Team, Message, TeamMember, MemberStatusInfo, CommandsResponse } from '@shared/types';
 import { MessageBubble, DateDivider } from './MessageBubble';
 import { InputBox } from './InputBox';
 import { Icon } from './Icon';
@@ -12,6 +12,7 @@ interface ChatAreaProps {
   memberStatuses: MemberStatusInfo[];
   crossTeamTargets: Team[];
   archivedTeams: Team[];
+  commands: CommandsResponse;
   onSendMessage: (content: string, to?: string) => void;
   onAvatarClick: (memberName: string) => void;
   theme: 'light' | 'dark';
@@ -109,6 +110,7 @@ export function ChatArea({
   memberStatuses,
   crossTeamTargets,
   archivedTeams,
+  commands,
   onSendMessage,
   onAvatarClick,
   theme,
@@ -322,6 +324,7 @@ export function ChatArea({
       <InputBox
         members={team.members}
         crossTeamTargets={crossTeamTargets}
+        commands={commands}
         onSend={onSendMessage}
         disabled={!team || isReadOnly}
       />
