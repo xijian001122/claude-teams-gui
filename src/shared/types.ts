@@ -176,6 +176,18 @@ export interface UpdateMessageBody {
   content: string;
 }
 
+// Slash Command Types
+export interface CommandItem {
+  name: string;
+  description: string;
+  type: 'command' | 'skill';
+}
+
+export interface CommandsResponse {
+  commands: CommandItem[];
+  skills: CommandItem[];
+}
+
 // Permission Response Types
 export interface PermissionResponseBody {
   /** ID of the permission request being responded to */

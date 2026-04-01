@@ -1,9 +1,9 @@
 {
   "name": "claude-teams-gui",
-  "version": "0.3.30",
+  "version": "0.3.31",
   "type": "module",
   "description": "Visual chat interface for Claude Code Teams",
-  "main": "dist/server/index.js",
+  "main": "dist/server/cli.js",
   "bin": {
     "claude-teams-gui": "./dist/server/cli.js"
   },
@@ -15,9 +15,9 @@
     "start:config": "bash scripts/start.sh",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
-    "build:server": "tsc -p src/server/tsconfig.json && cp src/server/package.json dist/server/ && mkdir -p dist/server/server/db && cp src/server/db/schema.sql dist/server/server/db/",
+    "build:server": "node scripts/build-server.js",
     "build:prod": "NODE_ENV=production npm run build",
-    "start": "node dist/server/index.js",
+    "start": "node dist/server/cli.js",
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx",
     "lint:fix": "eslint . --ext ts,tsx --fix",
@@ -58,6 +58,7 @@
     "@typescript-eslint/eslint-plugin": "^7.3.1",
     "@typescript-eslint/parser": "^7.3.1",
     "autoprefixer": "^10.4.19",
+    "esbuild": "^0.27.4",
     "eslint": "^8.57.0",
     "npm-run-all": "^4.1.5",
     "postcss": "^8.4.38",

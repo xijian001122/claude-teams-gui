@@ -6,7 +6,7 @@ import { TaskPanel } from './components/TaskPanel';
 import { MemberConversationPanel } from './components/MemberConversationPanel';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useTheme } from './hooks/useTheme';
-import type { Team, Message, ConfigChange, MemberStatusInfo, Task } from '@shared/types';
+import type { Team, Message, ConfigChange, MemberStatusInfo, Task, CommandsResponse } from '@shared/types';
 import { api } from './utils/api';
 
 export function App() {
@@ -29,14 +29,18 @@ export function App() {
   // Member context panel state
   const [viewingMemberContext, setViewingMemberContext] = useState<string | null>(null);
 
+  // Commands state for slash command picker
+  const [commands, setCommands] = useState<CommandsResponse>({ commands: [], skills: [] });
+
   const { theme, toggleTheme } = useTheme();
   const { lastMessage, connected } = useWebSocket();
 
-  // Load teams on mount
+  // Load teams and commands on mount
   useEffect(() => {
     loadTeams();
     loadArchivedTeams();
     loadCrossTeamTargets();
+    loadCommands();
   }, []);
 
   // Handle incoming WebSocket messages
@@ -223,6 +227,19 @@ export function App() {
     }
   };
 
+  const loadCommands = async (teamName?: string) => {
+    try {
+      const query = teamName ? `/commands?team=${encodeURIComponent(teamName)}` : '/commands';
+      const response = await api.get<CommandsResponse>(query);
+      const data = (response as any).data ? (response as any).data : response;
+      if (data?.commands && data?.skills) {
+        setCommands(data);
+      }
+    } catch (err) {
+      console.error('Failed to load commands:', err);
+    }
+  };
+
   const addMessage = (teamName: string, message: Message) => {
     setMessages(prev => {
       const newMap = new Map(prev);
@@ -255,10 +272,11 @@ export function App() {
     }
   };
 
-  // Load messages when team changes
+  // Load messages and commands when team changes
   useEffect(() => {
     if (currentTeam) {
       loadMessages(currentTeam);
+      loadCommands(currentTeam);
     }
   }, [currentTeam]);
 
@@ -279,8 +297,7 @@ export function App() {
   };
 
   const handleAvatarClick = (memberName: string) => {
-    // This will be handled by the InputBox component
-    console.log('Avatar clicked:', memberName);
+    setViewingMemberContext(memberName);
   };
 
   const handleViewMemberContext = (memberName: string) => {
@@ -377,6 +394,7 @@ export function App() {
           memberStatuses={memberStatuses.get(currentTeam || '') || []}
           crossTeamTargets={crossTeamTargets.filter(t => t.name !== currentTeam)}
           archivedTeams={archivedTeams}
+          commands={commands}
           onSendMessage={handleSendMessage}
           onAvatarClick={handleAvatarClick}
           theme={theme}
@@ -394,6 +412,7 @@ export function App() {
         <MemberConversationPanel
           teamName={currentTeam}
           memberName={viewingMemberContext}
+          commands={commands}
           onClose={() => setViewingMemberContext(null)}
         />
       )}
