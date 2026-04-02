@@ -12,7 +12,7 @@ export async function messageRoutes(
   // GET /api/teams/:name/messages - Get messages
   fastify.get('/:name/messages', async (request, reply) => {
     const { name } = request.params as { name: string };
-    const query = request.query as GetMessagesQuery;
+    const query = request.query as GetMessagesQuery & { source?: string; member?: string };
 
     try {
       const limit = Math.min(query.limit || 50, 200);
@@ -21,7 +21,9 @@ export async function messageRoutes(
         before: query.before,
         limit,
         to: query.to,
-        instance: query.instance
+        instance: query.instance,
+        source: query.source,
+        member: query.member
       });
 
       const hasMore = messages.length === limit;

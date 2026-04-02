@@ -13,6 +13,9 @@ export type MessageType =
 
 export type MemberType = 'agent' | 'user' | 'system';
 
+export type MessageSource = 'inbox' | 'session';
+export type SessionMsgType = 'text' | 'thinking' | 'tool_use' | 'tool_result' | 'queue_operation';
+
 export interface Message {
   id: string;
   localId: string;
@@ -30,6 +33,18 @@ export interface Message {
   originalTeam?: string;
   teamInstance?: string;
   sourceProject?: string;
+  /** Message source: 'inbox' (team communication) or 'session' (JSONL agent session) */
+  source?: MessageSource;
+  /** Session message type: text, thinking, tool_use, tool_result, queue_operation */
+  msgType?: SessionMsgType;
+  /** Agent name for session-sourced messages */
+  memberName?: string;
+  /** Tool name for tool_use messages */
+  toolName?: string;
+  /** Tool input params JSON for tool_use messages */
+  toolInput?: string;
+  /** Session ID from JSONL */
+  sessionId?: string;
 }
 
 export interface ClaudeRef {
@@ -163,6 +178,8 @@ export interface GetMessagesQuery {
   limit?: number;
   to?: string;
   instance?: string; // Filter by team instance ID
+  source?: MessageSource; // Filter by message source
+  member?: string; // Filter by member name
 }
 
 export interface SendMessageBody {

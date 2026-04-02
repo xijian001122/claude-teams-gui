@@ -76,8 +76,16 @@ export function ToolUseCard({ toolName, toolInput, isExpanded, onToggle }: ToolU
     );
   }
 
+  // Extract description for tools that have it (Bash, etc.)
+  const toolDescription = input?.description || '';
+  const displayTitle = toolDescription ? `${toolName} — ${toolDescription}` : toolName;
+
   // Format JSON with indentation
+  // Truncate large inputs to prevent UI overflow
   const formattedInput = JSON.stringify(toolInput, null, 2);
+  const truncatedInput = formattedInput.length > 2000
+    ? formattedInput.slice(0, 2000) + '\n... (内容已截断)'
+    : formattedInput;
 
   // Get tool icon based on name
   const getToolIcon = (name: string): string => {
@@ -120,8 +128,8 @@ export function ToolUseCard({ toolName, toolInput, isExpanded, onToggle }: ToolU
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={getToolIcon(toolName)} />
         </svg>
-        <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
-          {toolName}
+        <span className="text-sm font-medium text-purple-700 dark:text-purple-300 truncate">
+          {displayTitle}
         </span>
         <span className="text-xs text-purple-500 dark:text-purple-400 ml-auto">
           {expanded ? '收起' : '展开'}
@@ -135,8 +143,8 @@ export function ToolUseCard({ toolName, toolInput, isExpanded, onToggle }: ToolU
             <div className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1">
               输入参数
             </div>
-            <pre className="text-xs bg-white dark:bg-gray-900 rounded p-2 overflow-x-auto border border-purple-200 dark:border-purple-800">
-              <code className="text-purple-800 dark:text-purple-200">{formattedInput}</code>
+            <pre className="text-xs bg-white dark:bg-gray-900 rounded p-2 overflow-x-auto overflow-y-auto max-h-[200px] border border-purple-200 dark:border-purple-800 whitespace-pre-wrap break-all">
+              <code className="text-purple-800 dark:text-purple-200">{truncatedInput}</code>
             </pre>
           </div>
         </div>

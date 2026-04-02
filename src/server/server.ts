@@ -11,6 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 import type { AppConfig } from '@shared/types';
 import { DatabaseService } from './db';
 import { DataSyncService, FileWatcherService, CleanupService, ConfigService, MemberStatusService } from './services';
+import { JsonlSyncService } from './services/jsonl-sync-service';
 import { createLogger, initLogFactory, closeLogFactory, updateLogConfig } from './services/log-factory';
 import teamRoutes from './routes/teams';
 import messageRoutes from './routes/messages';
@@ -118,6 +119,19 @@ export async function createServer(options: ServerOptions) {
 
   await fileWatcher.start();
   log.info('File watcher started');
+
+  // Initialize JSONL sync service (async full scan + incremental watch)
+  const jsonlSync = new JsonlSyncService({ db, fastify, teamsPath: config.teamsPath });
+  // Run full scan asynchronously (does not block startup)
+  jsonlSync.fullScan().then((result) => {
+    log.info(`JSONL sync: ${result.files} files, ${result.messages} messages scanned in ${result.elapsed}ms`);
+    // Start incremental watching after full scan
+    jsonlSync.startWatching();
+    jsonlSync.startDirectoryWatch();
+    log.info('JSONL incremental watcher started');
+  }).catch((err) => {
+    log.error(`JSONL full scan failed: ${err}`);
+  });
 
   // Initialize all existing team members as offline (FileWatcher ignoreInitial doesn't detect them)
   try {
@@ -376,6 +390,7 @@ export async function createServer(options: ServerOptions) {
     log.info('Shutting down...');
 
     fileWatcher.stop();
+    jsonlSync.stop();
     configService.stopWatching();
     cleanupService.stop();
     closeLogFactory();
@@ -421,7 +436,7 @@ export async function createServer(options: ServerOptions) {
   process.on('SIGINT', () => shutdown(false));
   process.on('SIGTERM', () => shutdown(false));
 
-  return { fastify, db, dataSync, fileWatcher, cleanupService, memberStatusService };
+  return { fastify, db, dataSync, fileWatcher, cleanupService, memberStatusService, jsonlSync };
 }
 
 export default createServer;

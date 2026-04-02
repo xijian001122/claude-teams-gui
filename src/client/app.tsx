@@ -126,6 +126,12 @@ export function App() {
       loadMessages(lastMessage.team);
     }
 
+    // Handle new session messages from JSONL sync — reload the team's messages
+    if (lastMessage.type === 'new_session_messages' && lastMessage.team) {
+      console.log('[App] New session messages for team:', lastMessage.team);
+      loadMessages(lastMessage.team);
+    }
+
     // Handle team archived event
     if (lastMessage.type === 'team_archived' && lastMessage.team) {
       console.log('[App] Team archived:', lastMessage.team);

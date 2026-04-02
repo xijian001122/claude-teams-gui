@@ -20,7 +20,13 @@ CREATE TABLE IF NOT EXISTS messages (
   metadata TEXT,
   original_team TEXT,
   team_instance_id TEXT,
-  source_project TEXT
+  source_project TEXT,
+  source TEXT NOT NULL DEFAULT 'inbox' CHECK(source IN ('inbox', 'session')),
+  msg_type TEXT NOT NULL DEFAULT 'text' CHECK(msg_type IN ('text', 'thinking', 'tool_use', 'tool_result', 'queue_operation')),
+  member_name TEXT,
+  tool_name TEXT,
+  tool_input TEXT,
+  session_id TEXT
 );
 
 -- Indexes for messages
@@ -64,6 +70,21 @@ CREATE TABLE IF NOT EXISTS attachments (
 
 CREATE INDEX IF NOT EXISTS idx_attachments_team ON attachments(team);
 CREATE INDEX IF NOT EXISTS idx_attachments_message ON attachments(message_id);
+
+-- Indexes for unified message fields
+CREATE INDEX IF NOT EXISTS idx_messages_source ON messages(source);
+CREATE INDEX IF NOT EXISTS idx_messages_msg_type ON messages(msg_type);
+CREATE INDEX IF NOT EXISTS idx_messages_member ON messages(member_name) WHERE member_name IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id) WHERE session_id IS NOT NULL;
+
+-- JSONL file tracking table (offset persistence)
+CREATE TABLE IF NOT EXISTS jsonl_file_tracker (
+  file_path TEXT PRIMARY KEY,
+  team_name TEXT NOT NULL,
+  agent_name TEXT NOT NULL,
+  byte_offset INTEGER NOT NULL DEFAULT 0,
+  last_modified TEXT NOT NULL
+);
 
 -- Schema version tracking
 CREATE TABLE IF NOT EXISTS schema_version (
