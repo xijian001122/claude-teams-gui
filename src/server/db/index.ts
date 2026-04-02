@@ -35,6 +35,8 @@ export class DatabaseService {
 
     // Initialize schema synchronously
     this.initSchemaSync();
+    // Run migrations
+    this.runMigrations();
   }
 
   private initSchemaSync() {
@@ -58,6 +60,67 @@ export class DatabaseService {
   private ensureReady(): void {
     if (!this.ready) {
       getLog().warn('Database not ready, operation may fail');
+    }
+  }
+
+  private runMigrations(): void {
+    const migrations: Array<{ version: number; sql: string }> = [
+      {
+        version: 2,
+        sql: `
+          ALTER TABLE messages ADD COLUMN source TEXT NOT NULL DEFAULT 'inbox' CHECK(source IN ('inbox', 'session'));
+          ALTER TABLE messages ADD COLUMN msg_type TEXT NOT NULL DEFAULT 'text' CHECK(msg_type IN ('text', 'thinking', 'tool_use', 'tool_result', 'queue_operation'));
+          ALTER TABLE messages ADD COLUMN member_name TEXT;
+          ALTER TABLE messages ADD COLUMN tool_name TEXT;
+          ALTER TABLE messages ADD COLUMN tool_input TEXT;
+          ALTER TABLE messages ADD COLUMN session_id TEXT;
+        `
+      },
+      {
+        version: 3,
+        sql: `
+          CREATE TABLE IF NOT EXISTS jsonl_file_tracker (
+            file_path TEXT PRIMARY KEY,
+            team_name TEXT NOT NULL,
+            agent_name TEXT NOT NULL,
+            byte_offset INTEGER NOT NULL DEFAULT 0,
+            last_modified TEXT NOT NULL
+          );
+        `
+      }
+    ];
+
+    for (const migration of migrations) {
+      this.db.get(
+        'SELECT version FROM schema_version WHERE version = ?',
+        [migration.version],
+        (err, row) => {
+          if (err) {
+            getLog().error(`Migration check failed for v${migration.version}: ${err}`);
+            return;
+          }
+          if (!row) {
+            getLog().info(`Running migration v${migration.version}...`);
+            this.db.exec(migration.sql, (execErr) => {
+              if (execErr) {
+                // Column might already exist (fresh install)
+                getLog().warn(`Migration v${migration.version} note: ${execErr}`);
+              }
+              this.db.run(
+                'INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (?, datetime(\'now\'))',
+                [migration.version],
+                (insertErr) => {
+                  if (insertErr) {
+                    getLog().error(`Failed to record migration v${migration.version}: ${insertErr}`);
+                  } else {
+                    getLog().info(`Migration v${migration.version} applied`);
+                  }
+                }
+              );
+            });
+          }
+        }
+      );
     }
   }
 
@@ -143,14 +206,58 @@ export class DatabaseService {
     });
   }
 
+  /**
+   * Insert a session-sourced message (from JSONL sync)
+   */
+  insertSessionMessage(msg: {
+    id: string;
+    localId: string;
+    team: string;
+    fromMember: string;
+    fromType: string;
+    toMember: string | null;
+    content: string;
+    contentType: string;
+    timestamp: string;
+    source: string;
+    msgType: string;
+    memberName: string;
+    toolName: string | null;
+    toolInput: string | null;
+    sessionId: string | null;
+  }): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const stmt = this.db.prepare(`
+        INSERT OR IGNORE INTO messages (
+          id, local_id, team, from_member, from_type, to_member,
+          content, content_type, timestamp,
+          source, msg_type, member_name, tool_name, tool_input, session_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      stmt.run(
+        msg.id, msg.localId, msg.team, msg.fromMember, msg.fromType, msg.toMember,
+        msg.content, msg.contentType, msg.timestamp,
+        msg.source, msg.msgType, msg.memberName, msg.toolName, msg.toolInput, msg.sessionId,
+        (err: Error | null) => {
+          stmt.finalize();
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+  }
+
   getMessages(team: string, options: {
     before?: string;
     limit?: number;
     to?: string;
     instance?: string;
+    source?: string;
+    member?: string;
   } = {}): Promise<Message[]> {
     return new Promise((resolve, reject) => {
-      const { before, limit = 50, to, instance } = options;
+      const { before, limit = 50, to, instance, source, member } = options;
 
       let sql = `
         SELECT * FROM messages
@@ -174,13 +281,21 @@ export class DatabaseService {
 
       if (instance !== undefined) {
         if (instance === null || instance === 'null') {
-          // Filter for messages without instance (backward compatibility)
           sql += ' AND team_instance_id IS NULL';
         } else {
-          // Filter for specific instance
           sql += ' AND team_instance_id = ?';
           params.push(instance);
         }
+      }
+
+      if (source !== undefined) {
+        sql += ' AND source = ?';
+        params.push(source);
+      }
+
+      if (member !== undefined) {
+        sql += ' AND member_name = ?';
+        params.push(member);
       }
 
       sql += ' ORDER BY timestamp DESC LIMIT ?';
@@ -482,7 +597,13 @@ export class DatabaseService {
       metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
       originalTeam: row.original_team || undefined,
       teamInstance: row.team_instance_id || undefined,
-      sourceProject: row.source_project || undefined
+      sourceProject: row.source_project || undefined,
+      source: row.source || 'inbox',
+      msgType: row.msg_type || 'text',
+      memberName: row.member_name || undefined,
+      toolName: row.tool_name || undefined,
+      toolInput: row.tool_input || undefined,
+      sessionId: row.session_id || undefined,
     };
   }
 

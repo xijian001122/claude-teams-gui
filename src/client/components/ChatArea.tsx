@@ -171,52 +171,34 @@ export function ChatArea({
     instanceMessages.get(instance)!.push(processedMessage);
   });
 
-  // Build flat render list with instance dividers
+  // Build flat render list — all messages displayed without instance collapsing
   type RenderItem =
     | { type: 'date'; date: Date; key: string }
-    | { type: 'message'; message: Message; showAvatar: boolean }
-    | { type: 'instance_divider'; instanceId: string; timestamp: string; instanceIndex: number; isExpanded: boolean; isLatest: boolean };
+    | { type: 'message'; message: Message; showAvatar: boolean };
 
   const groupedMessages: RenderItem[] = [];
-  const lastIndex = instanceOrder.length - 1;
 
-  instanceOrder.forEach((instanceId, orderIndex) => {
-    const isLatest = orderIndex === lastIndex;
-    // Latest instance: expanded by default (collapsed only if explicitly toggled)
-    // Older instances: collapsed by default (expanded only if explicitly toggled)
-    const isExpanded = isLatest
-      ? !collapsedInstances.has(instanceId)
-      : collapsedInstances.has(instanceId);
-
+  // Flatten all instance messages into one list
+  const allMessages: Message[] = [];
+  instanceOrder.forEach((instanceId) => {
     const msgs = instanceMessages.get(instanceId) || [];
-    const dividerTimestamp = msgs[0]?.timestamp || new Date().toISOString();
+    allMessages.push(...msgs);
+  });
 
-    // Every instance gets a divider above it
-    groupedMessages.push({
-      type: 'instance_divider',
-      instanceId,
-      timestamp: dividerTimestamp,
-      instanceIndex: orderIndex + 1,
-      isExpanded,
-      isLatest
-    });
+  // No instance dividers — just dates and messages
+  allMessages.forEach((message, index) => {
+    const messageDate = parseISO(message.timestamp);
+    const prevMsg = index === 0 ? null : allMessages[index - 1];
 
-    if (isExpanded) {
-      msgs.forEach((message, index) => {
-        const messageDate = parseISO(message.timestamp);
-        const prevMsg = index === 0 ? null : msgs[index - 1];
-
-        if (index === 0 || !isSameDay(messageDate, parseISO(prevMsg!.timestamp))) {
-          groupedMessages.push({ type: 'date', date: messageDate, key: `${instanceId}-date-${index}` });
-        }
-
-        const showAvatar = !prevMsg ||
-          prevMsg.from !== message.from ||
-          !isSameDay(parseISO(prevMsg.timestamp), messageDate);
-
-        groupedMessages.push({ type: 'message', message, showAvatar });
-      });
+    if (index === 0 || !isSameDay(messageDate, parseISO(prevMsg!.timestamp))) {
+      groupedMessages.push({ type: 'date', date: messageDate, key: `date-${index}` });
     }
+
+    const showAvatar = !prevMsg ||
+      prevMsg.from !== message.from ||
+      !isSameDay(parseISO(prevMsg.timestamp), messageDate);
+
+    groupedMessages.push({ type: 'message', message, showAvatar });
   });
 
   if (!team) {
@@ -283,19 +265,6 @@ export function ChatArea({
             {groupedMessages.map((item, index) => {
               if (item.type === 'date') {
                 return <DateDivider key={item.key || `date-${index}`} date={item.date} />;
-              }
-
-              if (item.type === 'instance_divider') {
-                return (
-                  <InstanceDivider
-                    key={`instance-divider-${item.instanceId}`}
-                    timestamp={item.timestamp}
-                    instanceIndex={item.instanceIndex}
-                    isExpanded={item.isExpanded}
-                    isLatest={item.isLatest}
-                    onToggle={() => toggleInstance(item.instanceId)}
-                  />
-                );
               }
 
               const { message, showAvatar } = item;

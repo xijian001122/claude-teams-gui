@@ -1,10 +1,13 @@
 import { format, isToday, isYesterday } from 'date-fns';
 import { marked } from 'marked';
 import { useState, useRef, useEffect } from 'preact/hooks';
-import type { Message, TeamMember } from '@shared/types';
+import type { Message, TeamMember, SessionMsgType } from '@shared/types';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 import { JsonMessageCard } from './JsonMessageCard';
+import { ToolUseCard } from './ToolUseCard';
+import { ThinkingBlock } from './ThinkingBlock';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 // Configure marked for safe rendering
 marked.setOptions({
@@ -31,13 +34,16 @@ function LongContent({ html, isSelf, footer }: { html: string; isSelf: boolean; 
   const contentRef = useRef<HTMLDivElement>(null);
   const maxHeight = 300; // px
 
+  // User messages are always fully expanded
+  const alwaysExpanded = isSelf;
+
   useEffect(() => {
-    if (contentRef.current) {
+    if (contentRef.current && !alwaysExpanded) {
       setIsOverflow(contentRef.current.scrollHeight > maxHeight);
     }
-  }, [html]);
+  }, [html, alwaysExpanded]);
 
-  const expandBtn = isOverflow ? (
+  const expandBtn = (!alwaysExpanded && isOverflow) ? (
     <button
       onClick={() => setExpanded(!expanded)}
       className={`text-xs flex items-center gap-1 transition-colors ${
@@ -63,12 +69,12 @@ function LongContent({ html, isSelf, footer }: { html: string; isSelf: boolean; 
       <div className="relative">
         <div
           ref={contentRef}
-          className={`overflow-y-auto transition-all duration-200 ${expanded ? '' : 'max-h-[300px]'}`}
-          style={{ maxHeight: expanded ? 'none' : `${maxHeight}px` }}
+          className={`overflow-y-auto transition-all duration-200 ${alwaysExpanded || expanded ? '' : 'max-h-[300px]'}`}
+          style={{ maxHeight: alwaysExpanded || expanded ? 'none' : `${maxHeight}px` }}
           dangerouslySetInnerHTML={{ __html: html }}
         />
         {/* Gradient overlay when collapsed */}
-        {!expanded && isOverflow && (
+        {!alwaysExpanded && !expanded && isOverflow && (
           <div className={`absolute bottom-0 left-0 right-0 h-12 pointer-events-none ${
             isSelf ? 'bg-gradient-to-t from-blue-500' : 'bg-gradient-to-t from-[var(--bg-secondary)]'
           }`} />
@@ -126,6 +132,60 @@ export function MessageBubble({
 
   const formatted = formatMessageContent(message.content);
   const isSystemMessage = formatted.type === 'json';
+  const isSessionMsg = message.source === 'session';
+  const msgType = message.msgType || 'text';
+
+  // Session message type rendering — reuse rich components from MemberConversationPanel
+  const renderSessionContent = () => {
+    switch (msgType) {
+      case 'thinking':
+        return <ThinkingBlock content={message.content} />;
+      case 'tool_use': {
+        let toolInput: object = {};
+        if (message.toolInput) {
+          try { toolInput = JSON.parse(message.toolInput); } catch { toolInput = {}; }
+        }
+        return (
+          <ToolUseCard
+            toolName={message.toolName || 'Tool'}
+            toolInput={toolInput}
+          />
+        );
+      }
+      case 'tool_result':
+        return (
+          <div className="my-1 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 overflow-hidden">
+            <details>
+              <summary className="px-3 py-2 flex items-center gap-2 cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors text-left list-none">
+                <svg className="w-3.5 h-3.5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-xs font-medium text-green-700 dark:text-green-300">工具返回结果</span>
+              </summary>
+              <div className="px-3 pb-3 border-t border-green-200 dark:border-green-800">
+                <div className="pt-2 text-sm text-green-800 dark:text-green-200 overflow-hidden max-h-[300px] overflow-y-auto">
+                  <MarkdownRenderer content={message.content} />
+                </div>
+              </div>
+            </details>
+          </div>
+        );
+      case 'queue_operation':
+        return (
+          <div className="my-1 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 overflow-hidden">
+            <div className="px-3 py-2 flex items-center gap-2 text-left">
+              <svg className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.204-.107-.397.165-.71.505-.78.929l-.15.894c-.09.542-.56.94-1.109.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="text-xs text-amber-700 dark:text-amber-300">{message.content}</span>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
   // Determine cross-team message status
   const isCrossTeamIncoming = message.originalTeam && message.originalTeam !== currentTeam;
@@ -160,7 +220,7 @@ export function MessageBubble({
 
   return (
     <div
-      className={`flex gap-3 ${isSelf ? 'flex-row-reverse' : 'flex-row'} message-bubble`}
+      className={`flex gap-3 min-w-0 ${isSelf ? 'flex-row-reverse' : 'flex-row'} message-bubble`}
     >
       {/* Avatar */}
       {showAvatar && member ? (
@@ -175,7 +235,7 @@ export function MessageBubble({
 
       {/* Bubble */}
       <div
-        className={`max-w-[50%] rounded-lg px-4 py-2 overflow-hidden ${
+        className={`max-w-[70%] min-w-0 rounded-lg px-4 py-2 overflow-hidden ${
           isSelf
             ? 'bg-blue-500 text-white rounded-tr-none'
             : 'bg-[var(--bg-secondary)] text-[var(--text-primary)] rounded-tl-none'
@@ -234,7 +294,15 @@ export function MessageBubble({
         )}
 
         {/* Content */}
-        {isJsonMessage ? (
+        {isSessionMsg && msgType !== 'text' ? (
+          /* Session non-text messages: thinking, tool_use, tool_result, queue_operation */
+          <div className="text-sm">
+            {renderSessionContent()}
+            <div className={`text-xs mt-1 ${isSelf ? 'text-blue-100' : 'text-gray-400'}`}>
+              {formatTime(message.timestamp)}
+            </div>
+          </div>
+        ) : isJsonMessage ? (
           <JsonMessageCard
             message={message}
             onPermissionResponse={onPermissionResponse}

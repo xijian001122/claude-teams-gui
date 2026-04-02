@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
-import type { CommandsResponse, CommandItem } from '@shared/types';
+import type { CommandsResponse, CommandItem, Message } from '@shared/types';
 import { api } from '../utils/api';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ToolUseCard } from './ToolUseCard';
@@ -155,21 +155,42 @@ export function MemberConversationPanel({
 
   const loadConversation = useCallback(async () => {
     try {
-      const response = await api.get<MemberConversation>(
-        `/teams/${teamName}/members/${memberName}/conversation?limit=50`
+      // Use unified messages API with member filter
+      const response = await api.get<{ messages: Message[] }>(
+        `/teams/${teamName}/messages?member=${memberName}&source=session&limit=100`
       );
       if (response.success && response.data) {
+        const msgs = response.data.messages || [];
+        // Convert unified Message[] to ConversationMessage[] for rendering
+        const convMessages: ConversationMessage[] = msgs.map((msg) => {
+          let toolInput: object | undefined;
+          if (msg.toolInput) {
+            try { toolInput = JSON.parse(msg.toolInput); } catch { toolInput = undefined; }
+          }
+          return {
+            role: (msg.fromType === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+            type: (msg.msgType === 'queue_operation' ? 'text' : msg.msgType || 'text') as ConversationMessageType,
+            content: msg.content,
+            toolName: msg.toolName,
+            toolInput,
+            timestamp: msg.timestamp,
+            senderName: msg.memberName || msg.from,
+          };
+        });
         // Default expand all collapsible items
         const allKeys = new Set<string>();
-        response.data.messages.forEach((msg, i) => {
+        convMessages.forEach((msg, i) => {
           if (msg.type === 'tool_use' || msg.type === 'tool_result' || msg.type === 'thinking') {
             allKeys.add(`${msg.type}-${i}`);
           }
         });
         expandedRef.current = allKeys;
-        setConversation(response.data);
+        setConversation({
+          memberName,
+          sessionId: msgs[0]?.sessionId || '',
+          messages: convMessages,
+        });
         setError(null);
-        // Only scroll to bottom on initial load, otherwise respect user's scroll position
         if (initialLoadRef.current) {
           setTimeout(scrollToBottom, 0);
           initialLoadRef.current = false;

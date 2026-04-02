@@ -234,8 +234,8 @@ function createLogger(moduleConfig) {
   const stream = {
     write: (data) => {
       try {
-        const log13 = JSON.parse(data);
-        const { level: lvl, time, msg } = log13;
+        const log14 = JSON.parse(data);
+        const { level: lvl, time, msg } = log14;
         const levelName = pino.levels.labels[lvl] || "info";
         if (lvl < levelValue) return;
         const line = formatter(levelName, time, msg || "");
@@ -385,6 +385,7 @@ var init_db = __esm({
           }
         });
         this.initSchemaSync();
+        this.runMigrations();
       }
       initSchemaSync() {
         try {
@@ -405,6 +406,64 @@ var init_db = __esm({
       ensureReady() {
         if (!this.ready) {
           getLog().warn("Database not ready, operation may fail");
+        }
+      }
+      runMigrations() {
+        const migrations = [
+          {
+            version: 2,
+            sql: `
+          ALTER TABLE messages ADD COLUMN source TEXT NOT NULL DEFAULT 'inbox' CHECK(source IN ('inbox', 'session'));
+          ALTER TABLE messages ADD COLUMN msg_type TEXT NOT NULL DEFAULT 'text' CHECK(msg_type IN ('text', 'thinking', 'tool_use', 'tool_result', 'queue_operation'));
+          ALTER TABLE messages ADD COLUMN member_name TEXT;
+          ALTER TABLE messages ADD COLUMN tool_name TEXT;
+          ALTER TABLE messages ADD COLUMN tool_input TEXT;
+          ALTER TABLE messages ADD COLUMN session_id TEXT;
+        `
+          },
+          {
+            version: 3,
+            sql: `
+          CREATE TABLE IF NOT EXISTS jsonl_file_tracker (
+            file_path TEXT PRIMARY KEY,
+            team_name TEXT NOT NULL,
+            agent_name TEXT NOT NULL,
+            byte_offset INTEGER NOT NULL DEFAULT 0,
+            last_modified TEXT NOT NULL
+          );
+        `
+          }
+        ];
+        for (const migration of migrations) {
+          this.db.get(
+            "SELECT version FROM schema_version WHERE version = ?",
+            [migration.version],
+            (err, row) => {
+              if (err) {
+                getLog().error(`Migration check failed for v${migration.version}: ${err}`);
+                return;
+              }
+              if (!row) {
+                getLog().info(`Running migration v${migration.version}...`);
+                this.db.exec(migration.sql, (execErr) => {
+                  if (execErr) {
+                    getLog().warn(`Migration v${migration.version} note: ${execErr}`);
+                  }
+                  this.db.run(
+                    "INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (?, datetime('now'))",
+                    [migration.version],
+                    (insertErr) => {
+                      if (insertErr) {
+                        getLog().error(`Failed to record migration v${migration.version}: ${insertErr}`);
+                      } else {
+                        getLog().info(`Migration v${migration.version} applied`);
+                      }
+                    }
+                  );
+                });
+              }
+            }
+          );
         }
       }
       // Message operations
@@ -485,9 +544,45 @@ var init_db = __esm({
           );
         });
       }
+      /**
+       * Insert a session-sourced message (from JSONL sync)
+       */
+      insertSessionMessage(msg) {
+        return new Promise((resolve2, reject) => {
+          const stmt = this.db.prepare(`
+        INSERT OR IGNORE INTO messages (
+          id, local_id, team, from_member, from_type, to_member,
+          content, content_type, timestamp,
+          source, msg_type, member_name, tool_name, tool_input, session_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+          stmt.run(
+            msg.id,
+            msg.localId,
+            msg.team,
+            msg.fromMember,
+            msg.fromType,
+            msg.toMember,
+            msg.content,
+            msg.contentType,
+            msg.timestamp,
+            msg.source,
+            msg.msgType,
+            msg.memberName,
+            msg.toolName,
+            msg.toolInput,
+            msg.sessionId,
+            (err) => {
+              stmt.finalize();
+              if (err) reject(err);
+              else resolve2();
+            }
+          );
+        });
+      }
       getMessages(team, options = {}) {
         return new Promise((resolve2, reject) => {
-          const { before, limit = 50, to, instance } = options;
+          const { before, limit = 50, to, instance, source, member } = options;
           let sql = `
         SELECT * FROM messages
         WHERE team = ? AND deleted_at IS NULL
@@ -512,6 +607,14 @@ var init_db = __esm({
               sql += " AND team_instance_id = ?";
               params.push(instance);
             }
+          }
+          if (source !== void 0) {
+            sql += " AND source = ?";
+            params.push(source);
+          }
+          if (member !== void 0) {
+            sql += " AND member_name = ?";
+            params.push(member);
           }
           sql += " ORDER BY timestamp DESC LIMIT ?";
           params.push(limit);
@@ -783,7 +886,13 @@ var init_db = __esm({
           metadata: row.metadata ? JSON.parse(row.metadata) : void 0,
           originalTeam: row.original_team || void 0,
           teamInstance: row.team_instance_id || void 0,
-          sourceProject: row.source_project || void 0
+          sourceProject: row.source_project || void 0,
+          source: row.source || "inbox",
+          msgType: row.msg_type || "text",
+          memberName: row.member_name || void 0,
+          toolName: row.tool_name || void 0,
+          toolInput: row.tool_input || void 0,
+          sessionId: row.session_id || void 0
         };
       }
       rowToTeam(row) {
@@ -2769,12 +2878,25 @@ var init_session_reader = __esm({
           for (const f of files) {
             try {
               const fd = openSync(join8(projectDir, f), "r");
-              const buf = Buffer.alloc(4096);
-              const bytesRead = readSync(fd, buf, 0, 4096, 0);
+              const buf = Buffer.alloc(16384);
+              const bytesRead = readSync(fd, buf, 0, 16384, 0);
               closeSync(fd);
-              const firstLine = buf.toString("utf8", 0, bytesRead).split("\n")[0];
-              const entry = JSON.parse(firstLine);
-              if (entry.teamName === teamName && entry.agentName === memberName) {
+              const text = buf.toString("utf8", 0, bytesRead);
+              const lines = text.split("\n");
+              let matched = false;
+              for (let i = 0; i < Math.min(lines.length, 20); i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                try {
+                  const entry = JSON.parse(line);
+                  if (entry.teamName === teamName && entry.agentName === memberName) {
+                    matched = true;
+                    break;
+                  }
+                } catch {
+                }
+              }
+              if (matched) {
                 const stat = statSync3(join8(projectDir, f));
                 if (stat.mtimeMs > bestTime) {
                   bestMatch = f.replace(".jsonl", "");
@@ -3062,23 +3184,531 @@ var init_services = __esm({
 
 // src/server/cli.ts
 import { Command } from "commander";
-import { join as join15, resolve } from "path";
-import { homedir as homedir7 } from "os";
-import { existsSync as existsSync14, readFileSync as readFileSync8, writeFileSync as writeFileSync4, mkdirSync as mkdirSync4 } from "fs";
+import { join as join16, resolve } from "path";
+import { homedir as homedir8 } from "os";
+import { existsSync as existsSync15, readFileSync as readFileSync9, writeFileSync as writeFileSync4, mkdirSync as mkdirSync4 } from "fs";
 import open from "open";
 
 // src/server/server.ts
 init_db();
 init_services();
-init_log_factory();
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import staticPlugin from "@fastify/static";
-import { join as join14, dirname } from "path";
-import { existsSync as existsSync13 } from "fs";
+import { join as join15, dirname } from "path";
+import { existsSync as existsSync14 } from "fs";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
+
+// src/server/services/jsonl-sync-service.ts
+init_log_factory();
+import { watch as watch3 } from "chokidar";
+import { join as join9 } from "path";
+import { existsSync as existsSync9, readdirSync as readdirSync4, statSync as statSync4, openSync as openSync2, readSync as readSync2, closeSync as closeSync2 } from "fs";
+import { homedir as homedir6 } from "os";
+var log8 = createLogger({ module: "JsonlSync", shorthand: "s.s.jsonl-sync" });
+var wsLog3 = createLogger({ module: "WebSocket", shorthand: "s.ws" });
+var SKIP_TYPES = /* @__PURE__ */ new Set(["progress", "system", "file-history-snapshot", "last-prompt"]);
+var JsonlSyncService = class {
+  db;
+  fastify;
+  teamsPath;
+  watcher = null;
+  /** Map of tracked files: filePath → FileTracker */
+  trackedFiles = /* @__PURE__ */ new Map();
+  /** Cache: teamName → { leadMemberName, agentNames[] } */
+  teamMemberCache = /* @__PURE__ */ new Map();
+  constructor(options) {
+    this.db = options.db;
+    this.fastify = options.fastify;
+    this.teamsPath = options.teamsPath || join9(homedir6(), ".claude", "teams");
+  }
+  // ─── Full Scan (RDB) ───
+  /**
+   * Full scan all JSONL files under ~/.claude/projects/
+   * Called on startup. Async — does not block.
+   */
+  async fullScan() {
+    const start = Date.now();
+    let totalMessages = 0;
+    let totalFiles = 0;
+    const projectsDir = join9(homedir6(), ".claude", "projects");
+    if (!existsSync9(projectsDir)) {
+      log8.info("No projects directory, skipping JSONL scan");
+      return { files: 0, messages: 0, elapsed: 0 };
+    }
+    await this.loadTrackerState();
+    const jsonlFiles = this.findAllJsonlFiles(projectsDir);
+    log8.info(`Found ${jsonlFiles.length} JSONL files to scan`);
+    for (const filePath of jsonlFiles) {
+      try {
+        const count = await this.processFile(filePath);
+        if (count > 0) {
+          totalFiles++;
+          totalMessages += count;
+        }
+      } catch (err) {
+        log8.error(`Error processing ${filePath}: ${err}`);
+      }
+    }
+    const elapsed = Date.now() - start;
+    log8.info(`Full scan complete: ${totalFiles} files, ${totalMessages} messages, ${elapsed}ms`);
+    return { files: totalFiles, messages: totalMessages, elapsed };
+  }
+  /**
+   * Process a single JSONL file: parse lines, extract messages, write to DB
+   */
+  async processFile(filePath) {
+    const stat = statSync4(filePath);
+    const tracked = this.trackedFiles.get(filePath);
+    let startOffset = 0;
+    if (tracked) {
+      if (stat.size < tracked.byteOffset) {
+        log8.info(`File truncated: ${filePath}, re-reading from start`);
+        startOffset = 0;
+      } else {
+        startOffset = tracked.byteOffset;
+      }
+    }
+    const fd = openSync2(filePath, "r");
+    const bytesToRead = stat.size - startOffset;
+    if (bytesToRead <= 0) {
+      closeSync2(fd);
+      return 0;
+    }
+    const buf = Buffer.alloc(bytesToRead);
+    const bytesRead = readSync2(fd, buf, 0, bytesToRead, startOffset);
+    closeSync2(fd);
+    const text = buf.toString("utf8", 0, bytesRead);
+    const lines = text.split("\n");
+    let messagesInserted = 0;
+    let fileTeamName = tracked?.teamName || "";
+    let fileAgentName = tracked?.agentName || "";
+    let fileSessionId = "";
+    let foundTeamInfo = false;
+    if (!tracked) {
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const entry = JSON.parse(line);
+          if (entry.teamName) {
+            fileTeamName = entry.teamName;
+            fileAgentName = entry.agentName || "";
+            fileSessionId = entry.sessionId || "";
+            foundTeamInfo = true;
+            break;
+          }
+        } catch {
+        }
+      }
+      if (!foundTeamInfo) {
+        return 0;
+      }
+    } else {
+      fileSessionId = "";
+    }
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const entry = JSON.parse(line);
+        const entryType = entry.type;
+        if (entry.sessionId && !fileSessionId) {
+          fileSessionId = entry.sessionId;
+        }
+        if (SKIP_TYPES.has(entryType)) continue;
+        if (!foundTeamInfo && entry.teamName) {
+          fileTeamName = entry.teamName;
+          fileAgentName = entry.agentName;
+          fileSessionId = entry.sessionId || fileSessionId;
+          foundTeamInfo = true;
+        }
+        const parsed = this.parseEntry(entry, fileTeamName, fileAgentName, fileSessionId);
+        for (const msg of parsed) {
+          await this.insertParsedMessage(msg);
+          messagesInserted++;
+        }
+      } catch {
+      }
+    }
+    const newOffset = startOffset + bytesRead;
+    await this.updateTracker(filePath, fileTeamName, fileAgentName, newOffset, stat.mtime.toISOString());
+    return messagesInserted;
+  }
+  // ─── Parsing ───
+  /**
+   * Parse a single JSONL entry into one or more ParsedEntry objects
+   */
+  parseEntry(entry, teamName, agentName, sessionId) {
+    const results = [];
+    const timestamp = entry.timestamp || (/* @__PURE__ */ new Date()).toISOString();
+    if (entry.type === "queue-operation") {
+      const summary = this.extractQueueSummary(entry.content || "");
+      results.push({
+        teamName,
+        agentName,
+        sessionId,
+        timestamp: entry.timestamp || timestamp,
+        role: "assistant",
+        msgType: "queue_operation",
+        content: summary
+      });
+      return results;
+    }
+    if (entry.type === "user") {
+      const content = entry.message?.content;
+      if (!content) return results;
+      if (typeof content === "string") {
+        if (this.isUserContentDisplayable(content)) {
+          results.push({
+            teamName,
+            agentName,
+            sessionId,
+            timestamp,
+            role: "user",
+            msgType: "text",
+            content
+          });
+        }
+      } else if (Array.isArray(content)) {
+        for (const block of content) {
+          if (block.type === "text" && block.text) {
+            if (this.isUserContentDisplayable(block.text)) {
+              results.push({
+                teamName,
+                agentName,
+                sessionId,
+                timestamp,
+                role: "user",
+                msgType: "text",
+                content: block.text
+              });
+            }
+          }
+        }
+      }
+      return results;
+    }
+    if (entry.type === "assistant") {
+      const content = entry.message?.content;
+      if (!content) return results;
+      if (typeof content === "string") {
+        const cleaned = content.replace(/<!--\s*NOTIFY[\s\S]*?-->/g, "").trim();
+        if (cleaned) {
+          results.push({
+            teamName,
+            agentName,
+            sessionId,
+            timestamp,
+            role: "assistant",
+            msgType: "text",
+            content: cleaned
+          });
+        }
+      } else if (Array.isArray(content)) {
+        for (const block of content) {
+          if (block.type === "text" && block.text) {
+            const cleaned = block.text.replace(/<!--\s*NOTIFY[\s\S]*?-->/g, "").trim();
+            if (cleaned) {
+              results.push({
+                teamName,
+                agentName,
+                sessionId,
+                timestamp,
+                role: "assistant",
+                msgType: "text",
+                content: cleaned
+              });
+            }
+          } else if (block.type === "thinking" && block.thinking) {
+            results.push({
+              teamName,
+              agentName,
+              sessionId,
+              timestamp,
+              role: "assistant",
+              msgType: "thinking",
+              content: block.thinking
+            });
+          } else if (block.type === "tool_use") {
+            results.push({
+              teamName,
+              agentName,
+              sessionId,
+              timestamp,
+              role: "assistant",
+              msgType: "tool_use",
+              content: block.name || "",
+              toolName: block.name,
+              toolInput: typeof block.input === "string" ? block.input : JSON.stringify(block.input)
+            });
+          }
+        }
+      }
+      return results;
+    }
+    return results;
+  }
+  /**
+   * Extract summary from queue-operation XML content
+   */
+  extractQueueSummary(xmlContent) {
+    const statusMatch = xmlContent.match(/<status>([^<]+)<\/status>/);
+    const summaryMatch = xmlContent.match(/<summary>([^<]+)<\/summary>/);
+    const status = statusMatch?.[1] || "unknown";
+    const summary = summaryMatch?.[1] || xmlContent.slice(0, 200);
+    return `${summary} (${status})`;
+  }
+  /**
+   * Check if user content is displayable (not internal protocol tags)
+   */
+  isUserContentDisplayable(content) {
+    const trimmed = content.trim();
+    if (trimmed.includes("<command-name") || trimmed.includes("<command-message") || trimmed.includes("<local-command-stdout") || trimmed.includes("<local-command-caveat")) {
+      return false;
+    }
+    if (trimmed.includes("<teammate-message")) {
+      return false;
+    }
+    if (trimmed.startsWith("[{") && trimmed.includes('"tool_use_id"')) {
+      return false;
+    }
+    if (trimmed.startsWith("[{") && trimmed.includes('"type":"text"') && trimmed.includes('"text"')) {
+      return false;
+    }
+    if (trimmed === "[Request interrupted by user]" || trimmed.startsWith("[Request interrupted")) {
+      return false;
+    }
+    return true;
+  }
+  // ─── Incremental Watch (AOF) ───
+  /**
+   * Start watching tracked JSONL files for changes
+   */
+  startWatching() {
+    if (this.trackedFiles.size === 0) {
+      log8.info("No tracked files to watch");
+      return;
+    }
+    const filePaths = Array.from(this.trackedFiles.keys());
+    log8.info(`Watching ${filePaths.length} JSONL files for changes`);
+    this.watcher = watch3(filePaths, {
+      persistent: true,
+      ignoreInitial: true
+    });
+    this.watcher.on("change", async (filePath) => {
+      log8.debug(`JSONL changed: ${filePath}`);
+      try {
+        const count = await this.processFile(filePath);
+        if (count > 0) {
+          log8.debug(`${count} new messages from ${filePath}`);
+          const tracked = this.trackedFiles.get(filePath);
+          if (tracked) {
+            this.broadcastNewMessages(tracked.teamName);
+          }
+        }
+      } catch (err) {
+        log8.error(`Error processing changed file ${filePath}: ${err}`);
+      }
+    });
+    this.watcher.on("error", (err) => {
+      log8.error(`JSONL watcher error: ${err}`);
+    });
+  }
+  /**
+   * Start watching for new JSONL files in a directory
+   */
+  startDirectoryWatch() {
+    const projectsDir = join9(homedir6(), ".claude", "projects");
+    if (!existsSync9(projectsDir)) return;
+    const dirWatcher = watch3(join9(projectsDir, "**/*.jsonl"), {
+      persistent: true,
+      ignoreInitial: true,
+      depth: 3
+    });
+    dirWatcher.on("add", async (filePath) => {
+      log8.info(`New JSONL file detected: ${filePath}`);
+      try {
+        const count = await this.processFile(filePath);
+        if (count > 0) {
+          const tracked = this.trackedFiles.get(filePath);
+          if (tracked) {
+            this.broadcastNewMessages(tracked.teamName);
+            if (this.watcher) {
+              this.watcher.add(filePath);
+            }
+          }
+        }
+      } catch (err) {
+        log8.error(`Error processing new file ${filePath}: ${err}`);
+      }
+    });
+    this._dirWatcher = dirWatcher;
+  }
+  // ─── WebSocket Broadcast ───
+  broadcastNewMessages(teamName) {
+    const wsServer = this.fastify.websocketServer;
+    if (!wsServer?.clients) return;
+    const eventData = JSON.stringify({
+      type: "new_session_messages",
+      team: teamName
+    });
+    let sent = 0;
+    wsServer.clients.forEach((client) => {
+      if (client.readyState === 1) {
+        client.send(eventData);
+        sent++;
+      }
+    });
+    wsLog3.debug(`Broadcasted new_session_messages for ${teamName} to ${sent} clients`);
+  }
+  // ─── DB Helpers ───
+  /**
+   * Resolve the actual member name from agentName.
+   * - Sub-agents: agentName matches a team member directly (e.g. "backend-dev")
+   * - Team-lead: agentName is empty → resolve from team config (first member with team-lead role)
+   */
+  async resolveMemberName(teamName, agentName) {
+    if (agentName) return agentName;
+    let cache = this.teamMemberCache.get(teamName);
+    if (!cache) {
+      const team = await this.db.getTeam(teamName);
+      if (team?.members) {
+        const agents = /* @__PURE__ */ new Map();
+        let leadName = "team-lead";
+        for (const m of team.members) {
+          agents.set(m.name, m.name);
+          if (m.role === "team-lead" || m.role === "lead" || m.name === "team-lead" || m.name === "main") {
+            leadName = m.name;
+          }
+        }
+        cache = { leadName, agents };
+        this.teamMemberCache.set(teamName, cache);
+      }
+    }
+    return cache?.leadName || "team-lead";
+  }
+  async insertParsedMessage(msg) {
+    const id = `session-${msg.sessionId}-${msg.timestamp}-${msg.msgType}-${Math.random().toString(36).slice(2, 8)}`;
+    const localId = id;
+    const isUserMsg = msg.role === "user";
+    const resolvedAgent = isUserMsg ? "user" : await this.resolveMemberName(msg.teamName, msg.agentName);
+    const fromMember = resolvedAgent;
+    const fromType = isUserMsg ? "user" : "agent";
+    await this.db.insertSessionMessage({
+      id,
+      localId,
+      team: msg.teamName,
+      fromMember,
+      fromType,
+      toMember: null,
+      content: msg.content,
+      contentType: "text",
+      timestamp: msg.timestamp,
+      source: "session",
+      msgType: msg.msgType,
+      memberName: resolvedAgent,
+      toolName: msg.toolName || null,
+      toolInput: msg.toolInput || null,
+      sessionId: msg.sessionId || null
+    });
+  }
+  async loadTrackerState() {
+    return new Promise((resolve2) => {
+      this.db.db.all(
+        "SELECT * FROM jsonl_file_tracker",
+        [],
+        (err, rows) => {
+          if (!err && rows) {
+            for (const row of rows) {
+              this.trackedFiles.set(row.file_path, {
+                filePath: row.file_path,
+                teamName: row.team_name,
+                agentName: row.agent_name,
+                byteOffset: row.byte_offset,
+                lastModified: row.last_modified
+              });
+            }
+            log8.info(`Loaded ${rows.length} file tracker records`);
+          }
+          resolve2();
+        }
+      );
+    });
+  }
+  async updateTracker(filePath, teamName, agentName, byteOffset, lastModified) {
+    const tracker = { filePath, teamName, agentName, byteOffset, lastModified };
+    this.trackedFiles.set(filePath, tracker);
+    return new Promise((resolve2) => {
+      this.db.db.run(
+        `INSERT INTO jsonl_file_tracker (file_path, team_name, agent_name, byte_offset, last_modified)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(file_path) DO UPDATE SET
+           team_name = excluded.team_name,
+           agent_name = excluded.agent_name,
+           byte_offset = excluded.byte_offset,
+           last_modified = excluded.last_modified`,
+        [filePath, teamName, agentName, byteOffset, lastModified],
+        (err) => {
+          if (err) log8.error(`Failed to update tracker for ${filePath}: ${err}`);
+          resolve2();
+        }
+      );
+    });
+  }
+  // ─── Utility ───
+  findAllJsonlFiles(projectsDir) {
+    const files = [];
+    try {
+      const projectDirs = readdirSync4(projectsDir, { withFileTypes: true });
+      for (const dir of projectDirs) {
+        if (!dir.isDirectory()) continue;
+        const dirPath = join9(projectsDir, dir.name);
+        try {
+          const entries = readdirSync4(dirPath);
+          for (const entry of entries) {
+            if (entry.endsWith(".jsonl")) {
+              files.push(join9(dirPath, entry));
+            }
+          }
+          const subagentsDir = join9(dirPath, "subagents");
+          if (existsSync9(subagentsDir)) {
+            try {
+              const subEntries = readdirSync4(subagentsDir);
+              for (const entry of subEntries) {
+                if (entry.endsWith(".jsonl")) {
+                  files.push(join9(subagentsDir, entry));
+                }
+              }
+            } catch {
+            }
+          }
+        } catch {
+        }
+      }
+    } catch (err) {
+      log8.error(`Error scanning projects directory: ${err}`);
+    }
+    return files;
+  }
+  /**
+   * Stop all watchers
+   */
+  stop() {
+    if (this.watcher) {
+      this.watcher.close();
+      this.watcher = null;
+    }
+    const dirWatcher = this._dirWatcher;
+    if (dirWatcher) {
+      dirWatcher.close();
+      delete this._dirWatcher;
+    }
+  }
+};
+
+// src/server/server.ts
+init_log_factory();
 
 // src/server/routes/teams.ts
 async function teamRoutes(fastify, options) {
@@ -3165,7 +3795,9 @@ async function messageRoutes(fastify, options) {
         before: query.before,
         limit,
         to: query.to,
-        instance: query.instance
+        instance: query.instance,
+        source: query.source,
+        member: query.member
       });
       const hasMore = messages.length === limit;
       const instances = /* @__PURE__ */ new Set();
@@ -3307,8 +3939,8 @@ async function messageRoutes(fastify, options) {
 var messages_default = messageRoutes;
 
 // src/server/routes/archive.ts
-import { join as join9 } from "path";
-import { existsSync as existsSync9, readdirSync as readdirSync4, rmSync as rmSync2 } from "fs";
+import { join as join10 } from "path";
+import { existsSync as existsSync10, readdirSync as readdirSync5, rmSync as rmSync2 } from "fs";
 async function archiveRoutes(fastify, options) {
   const { db, dataDir } = options;
   fastify.get("/", async (_request, reply) => {
@@ -3375,12 +4007,12 @@ async function archiveRoutes(fastify, options) {
         };
       }
       db.deleteTeam(name);
-      const archiveBase = join9(dataDir, "archive");
-      if (existsSync9(archiveBase)) {
-        const entries = readdirSync4(archiveBase, { withFileTypes: true });
+      const archiveBase = join10(dataDir, "archive");
+      if (existsSync10(archiveBase)) {
+        const entries = readdirSync5(archiveBase, { withFileTypes: true });
         for (const entry of entries) {
           if (entry.isDirectory() && entry.name.startsWith(`${name}-`)) {
-            const dirPath = join9(archiveBase, entry.name);
+            const dirPath = join10(archiveBase, entry.name);
             rmSync2(dirPath, { recursive: true });
           }
         }
@@ -3401,7 +4033,7 @@ var archive_default = archiveRoutes;
 
 // src/server/routes/settings.ts
 init_log_factory();
-var log8 = createLogger({ module: "Settings", shorthand: "s.r.settings" });
+var log9 = createLogger({ module: "Settings", shorthand: "s.r.settings" });
 async function settingsRoutes(fastify, options) {
   const { configService, onRestart } = options;
   fastify.get("/", async (_request, _reply) => {
@@ -3492,7 +4124,7 @@ async function settingsRoutes(fastify, options) {
         try {
           await onRestart();
         } catch (err) {
-          log8.error(`Restart failed: ${err}`);
+          log9.error(`Restart failed: ${err}`);
         }
       }, 100);
       return reply;
@@ -3509,9 +4141,9 @@ var settings_default = settingsRoutes;
 
 // src/server/routes/permission-response.ts
 init_log_factory();
-import { join as join10 } from "path";
-import { readFileSync as readFileSync6, existsSync as existsSync10, writeFileSync as writeFileSync3 } from "fs";
-var log9 = createLogger({ module: "PermissionResponse", shorthand: "s.r.perm" });
+import { join as join11 } from "path";
+import { readFileSync as readFileSync7, existsSync as existsSync11, writeFileSync as writeFileSync3 } from "fs";
+var log10 = createLogger({ module: "PermissionResponse", shorthand: "s.r.perm" });
 async function permissionResponseRoutes(fastify, options) {
   const { db, claudeTeamsPath } = options;
   fastify.post("/:name/permission-response", async (request, reply) => {
@@ -3557,15 +4189,15 @@ async function permissionResponseRoutes(fastify, options) {
           timestamp
         }
       };
-      const inboxPath = join10(claudeTeamsPath, name, "inboxes", `${body.agent_id}.json`);
-      if (!existsSync10(inboxPath)) {
+      const inboxPath = join11(claudeTeamsPath, name, "inboxes", `${body.agent_id}.json`);
+      if (!existsSync11(inboxPath)) {
         reply.status(404);
         return {
           success: false,
           error: `Agent inbox not found: ${body.agent_id}`
         };
       }
-      const messages = JSON.parse(readFileSync6(inboxPath, "utf8"));
+      const messages = JSON.parse(readFileSync7(inboxPath, "utf8"));
       if (!Array.isArray(messages)) {
         reply.status(500);
         return {
@@ -3581,10 +4213,10 @@ async function permissionResponseRoutes(fastify, options) {
         read: false
       });
       writeFileSync3(inboxPath, JSON.stringify(messages, null, 2));
-      log9.info(`Written to ${body.agent_id}'s inbox: ${body.approve ? "approved" : "rejected"} ${body.request_id}`);
+      log10.info(`Written to ${body.agent_id}'s inbox: ${body.approve ? "approved" : "rejected"} ${body.request_id}`);
       const newStatus = body.approve ? "approved" : "rejected";
       await db.updatePermissionRequestStatus(name, body.request_id, newStatus);
-      log9.debug(`Updated database status to ${newStatus} for request ${body.request_id}`);
+      log10.debug(`Updated database status to ${newStatus} for request ${body.request_id}`);
       reply.status(201);
       return {
         success: true,
@@ -3595,7 +4227,7 @@ async function permissionResponseRoutes(fastify, options) {
         }
       };
     } catch (err) {
-      log9.error(`Error processing permission response: ${err}`);
+      log10.error(`Error processing permission response: ${err}`);
       reply.status(500);
       return {
         success: false,
@@ -3611,13 +4243,13 @@ init_task_storage();
 init_session_summary();
 init_log_factory();
 import { readdir as readdir2, readFile as readFile2 } from "fs/promises";
-import { existsSync as existsSync11, statSync as statSync4 } from "fs";
-import { join as join11 } from "path";
-import { homedir as homedir6 } from "os";
-var log10 = createLogger({ module: "Tasks", shorthand: "s.r.tasks" });
+import { existsSync as existsSync12, statSync as statSync5 } from "fs";
+import { join as join12 } from "path";
+import { homedir as homedir7 } from "os";
+var log11 = createLogger({ module: "Tasks", shorthand: "s.r.tasks" });
 async function readTasksFromFiles(teamName) {
-  const tasksDir = join11(homedir6(), ".claude", "tasks", teamName);
-  if (!existsSync11(tasksDir)) {
+  const tasksDir = join12(homedir7(), ".claude", "tasks", teamName);
+  if (!existsSync12(tasksDir)) {
     return [];
   }
   try {
@@ -3626,7 +4258,7 @@ async function readTasksFromFiles(teamName) {
     const tasks = [];
     for (const file of jsonFiles) {
       try {
-        const filePath = join11(tasksDir, file);
+        const filePath = join12(tasksDir, file);
         const content = await readFile2(filePath, "utf-8");
         const task = JSON.parse(content);
         if (task.id && task.subject && task.status) {
@@ -3645,7 +4277,7 @@ async function readTasksFromFiles(teamName) {
           });
         }
       } catch (parseError) {
-        log10.error(`Failed to parse task file ${file}: ${parseError}`);
+        log11.error(`Failed to parse task file ${file}: ${parseError}`);
       }
     }
     tasks.sort((a, b) => {
@@ -3655,7 +4287,7 @@ async function readTasksFromFiles(teamName) {
     });
     return tasks;
   } catch (error) {
-    log10.error(`Failed to read tasks directory: ${error}`);
+    log11.error(`Failed to read tasks directory: ${error}`);
     return [];
   }
 }
@@ -3738,7 +4370,7 @@ async function tasksRoutes(fastify) {
         data: task
       };
     } catch (err) {
-      log10.error(`Error creating task: ${err}`);
+      log11.error(`Error creating task: ${err}`);
       reply.status(500);
       return {
         success: false,
@@ -3776,7 +4408,7 @@ async function tasksRoutes(fastify) {
         data: task
       };
     } catch (err) {
-      log10.error(`Error updating task ${id}: ${err}`);
+      log11.error(`Error updating task ${id}: ${err}`);
       reply.status(500);
       return {
         success: false,
@@ -3801,7 +4433,7 @@ async function tasksRoutes(fastify) {
         success: true
       };
     } catch (err) {
-      log10.error(`Error deleting task ${id}: ${err}`);
+      log11.error(`Error deleting task ${id}: ${err}`);
       reply.status(500);
       return {
         success: false,
@@ -3819,7 +4451,7 @@ async function tasksRoutes(fastify) {
         data: { filePath }
       };
     } catch (err) {
-      log10.error(`Error generating session summary for ${name}: ${err}`);
+      log11.error(`Error generating session summary for ${name}: ${err}`);
       reply.status(500);
       return {
         success: false,
@@ -3841,13 +4473,13 @@ async function globalTasksRoutes(fastify) {
           }
         }
       } else {
-        const tasksBaseDir = join11(homedir6(), ".claude", "tasks");
-        if (existsSync11(tasksBaseDir)) {
+        const tasksBaseDir = join12(homedir7(), ".claude", "tasks");
+        if (existsSync12(tasksBaseDir)) {
           const teamDirs = await readdir2(tasksBaseDir);
           for (const teamName of teamDirs) {
-            const teamPath = join11(tasksBaseDir, teamName);
+            const teamPath = join12(tasksBaseDir, teamName);
             try {
-              if (statSync4(teamPath).isDirectory()) {
+              if (statSync5(teamPath).isDirectory()) {
                 const tasks = await readTasksFromFiles(teamName);
                 for (const task of tasks) {
                   if (!status || task.status === status) {
@@ -3870,7 +4502,7 @@ async function globalTasksRoutes(fastify) {
         }
       };
     } catch (err) {
-      log10.error(`Error fetching global tasks: ${err}`);
+      log11.error(`Error fetching global tasks: ${err}`);
       reply.status(500);
       return {
         success: false,
@@ -3880,17 +4512,17 @@ async function globalTasksRoutes(fastify) {
   });
 }
 async function getAllTasksForCounts() {
-  const tasksBaseDir = join11(homedir6(), ".claude", "tasks");
+  const tasksBaseDir = join12(homedir7(), ".claude", "tasks");
   const allTasks = [];
-  if (!existsSync11(tasksBaseDir)) {
+  if (!existsSync12(tasksBaseDir)) {
     return allTasks;
   }
   try {
     const teamDirs = await readdir2(tasksBaseDir);
     for (const teamName of teamDirs) {
-      const teamPath = join11(tasksBaseDir, teamName);
+      const teamPath = join12(tasksBaseDir, teamName);
       try {
-        if (statSync4(teamPath).isDirectory()) {
+        if (statSync5(teamPath).isDirectory()) {
           const tasks = await readTasksFromFiles(teamName);
           allTasks.push(...tasks);
         }
@@ -3905,13 +4537,13 @@ var tasks_default = tasksRoutes;
 
 // src/server/routes/logs.ts
 import { readFile as readFile3 } from "fs/promises";
-import { join as join12 } from "path";
+import { join as join13 } from "path";
 async function logsRoutes(fastify, options) {
   const { configService } = options;
   fastify.get("/error", async (_request, reply) => {
     try {
       const config = configService.getConfig();
-      const logPath = join12(config.dataDir, "logs", "error.log");
+      const logPath = join13(config.dataDir, "logs", "error.log");
       try {
         const content = await readFile3(logPath, "utf-8");
         return {
@@ -3935,7 +4567,7 @@ async function logsRoutes(fastify, options) {
   fastify.get("/console", async (_request, reply) => {
     try {
       const config = configService.getConfig();
-      const logPath = join12(config.dataDir, "logs", "console.log");
+      const logPath = join13(config.dataDir, "logs", "console.log");
       try {
         const content = await readFile3(logPath, "utf-8");
         return {
@@ -3959,7 +4591,7 @@ async function logsRoutes(fastify, options) {
   fastify.get("/info", async (_request, reply) => {
     try {
       const config = configService.getConfig();
-      const logPath = join12(config.dataDir, "logs", "info.log");
+      const logPath = join13(config.dataDir, "logs", "info.log");
       try {
         const content = await readFile3(logPath, "utf-8");
         return {
@@ -3985,7 +4617,7 @@ var logs_default = logsRoutes;
 
 // src/server/routes/hooks.ts
 init_log_factory();
-var log11 = createLogger({ module: "Hooks", shorthand: "s.r.hooks" });
+var log12 = createLogger({ module: "Hooks", shorthand: "s.r.hooks" });
 function broadcastTaskCreated(fastify, taskData) {
   const wsServer = fastify.websocketServer;
   if (!wsServer?.clients) {
@@ -4019,7 +4651,7 @@ async function hooksRoutes(fastify, _options) {
           error: "Missing required fields: taskId, teamName"
         };
       }
-      log11.info(`Task created: ${body.taskId} for team ${body.teamName}`);
+      log12.info(`Task created: ${body.taskId} for team ${body.teamName}`);
       broadcastTaskCreated(fastify, {
         taskId: body.taskId,
         teamName: body.teamName,
@@ -4044,6 +4676,7 @@ var hooks_default = hooksRoutes;
 init_session_reader();
 async function memberSessionRoutes(fastify, options) {
   const sessionReader = new SessionReaderService({ teamsPath: options.teamsPath });
+  const { db } = options;
   fastify.get("/:team/members/:member/session", async (request, reply) => {
     const { team, member } = request.params;
     const session = sessionReader.getMemberSession(team, member);
@@ -4064,9 +4697,36 @@ async function memberSessionRoutes(fastify, options) {
     const query = request.query;
     const limit = query.limit ? parseInt(query.limit, 10) : 50;
     const conversation = sessionReader.getMemberConversation(team, member, limit);
+    let dbMessages = [];
+    try {
+      const sentToMember = await db.getMessages(team, { to: member, limit: 100 });
+      for (const msg of sentToMember) {
+        dbMessages.push({
+          role: msg.from === "user" ? "user" : "assistant",
+          type: "text",
+          content: msg.content,
+          timestamp: msg.timestamp,
+          senderName: msg.from || "user"
+        });
+      }
+    } catch (err) {
+    }
+    const existingTimestamps = new Set(
+      conversation.messages.map((m) => m.timestamp)
+    );
+    const newDbMessages = dbMessages.filter((m) => !existingTimestamps.has(m.timestamp));
+    const allMessages = [...conversation.messages, ...newDbMessages];
+    allMessages.sort((a, b) => {
+      const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return ta - tb;
+    });
     return {
       success: true,
-      data: conversation
+      data: {
+        ...conversation,
+        messages: allMessages.slice(-limit)
+      }
     };
   });
   fastify.get("/:team/members/sessions", async (request, _reply) => {
@@ -4082,9 +4742,9 @@ var member_session_default = memberSessionRoutes;
 
 // src/server/routes/commands.ts
 init_log_factory();
-import { readdirSync as readdirSync5, readFileSync as readFileSync7, statSync as statSync5, existsSync as existsSync12 } from "fs";
-import { join as join13 } from "path";
-var log12 = createLogger({ module: "Commands", shorthand: "s.r.commands" });
+import { readdirSync as readdirSync6, readFileSync as readFileSync8, statSync as statSync6, existsSync as existsSync13 } from "fs";
+import { join as join14 } from "path";
+var log13 = createLogger({ module: "Commands", shorthand: "s.r.commands" });
 var cacheMap = /* @__PURE__ */ new Map();
 var CACHE_TTL = 6e4;
 function parseFrontmatter(content) {
@@ -4116,36 +4776,36 @@ function truncate(desc) {
   return desc.slice(0, 50) + "...";
 }
 function getTeamProjectDir(teamsPath, teamName) {
-  const configPath = join13(teamsPath, teamName, "config.json");
+  const configPath = join14(teamsPath, teamName, "config.json");
   try {
-    if (!existsSync12(configPath)) return null;
-    const config = JSON.parse(readFileSync7(configPath, "utf-8"));
+    if (!existsSync13(configPath)) return null;
+    const config = JSON.parse(readFileSync8(configPath, "utf-8"));
     if (config.members && config.members.length > 0 && config.members[0].cwd) {
       return config.members[0].cwd;
     }
   } catch (err) {
-    log12.debug(`Failed to read team config for ${teamName}: ${err}`);
+    log13.debug(`Failed to read team config for ${teamName}: ${err}`);
   }
   return null;
 }
 function scanProjectDir(projectDir) {
   const commands = [];
   const skills = [];
-  const claudeDir = join13(projectDir, ".claude");
-  if (!existsSync12(claudeDir)) {
+  const claudeDir = join14(projectDir, ".claude");
+  if (!existsSync13(claudeDir)) {
     return { commands, skills };
   }
-  const commandsDir = join13(claudeDir, "commands");
+  const commandsDir = join14(claudeDir, "commands");
   try {
-    const groups = readdirSync5(commandsDir);
+    const groups = readdirSync6(commandsDir);
     for (const group of groups) {
-      const groupPath = join13(commandsDir, group);
-      if (!statSync5(groupPath).isDirectory()) continue;
-      const files = readdirSync5(groupPath);
+      const groupPath = join14(commandsDir, group);
+      if (!statSync6(groupPath).isDirectory()) continue;
+      const files = readdirSync6(groupPath);
       for (const file of files) {
         if (!file.endsWith(".md")) continue;
-        const filePath = join13(groupPath, file);
-        const content = readFileSync7(filePath, "utf-8");
+        const filePath = join14(groupPath, file);
+        const content = readFileSync8(filePath, "utf-8");
         const fm = parseFrontmatter(content);
         const callName = `${group}:${file.replace(/\.md$/, "")}`;
         let desc = fm.description || firstContentLine(content) || "";
@@ -4153,25 +4813,25 @@ function scanProjectDir(projectDir) {
       }
     }
   } catch {
-    log12.debug("No commands directory found");
+    log13.debug("No commands directory found");
   }
-  const skillsDir = join13(claudeDir, "skills");
+  const skillsDir = join14(claudeDir, "skills");
   try {
-    const dirs = readdirSync5(skillsDir);
+    const dirs = readdirSync6(skillsDir);
     for (const dir of dirs) {
-      const skillFile = join13(skillsDir, dir, "SKILL.md");
+      const skillFile = join14(skillsDir, dir, "SKILL.md");
       try {
-        statSync5(skillFile);
+        statSync6(skillFile);
       } catch {
         continue;
       }
-      const content = readFileSync7(skillFile, "utf-8");
+      const content = readFileSync8(skillFile, "utf-8");
       const fm = parseFrontmatter(content);
       let desc = fm.description || firstContentLine(content) || "";
       skills.push({ name: dir, description: truncate(desc), type: "skill" });
     }
   } catch {
-    log12.debug("No skills directory found");
+    log13.debug("No skills directory found");
   }
   return { commands, skills };
 }
@@ -4182,7 +4842,7 @@ async function commandsRoutes(fastify) {
     if (cwd) {
       projectDir = cwd;
     } else if (team) {
-      const teamsPath = fastify.config?.teamsPath || process.env.CLAUDE_TEAMS_PATH || join13(process.env.HOME || "/root", ".claude/teams");
+      const teamsPath = fastify.config?.teamsPath || process.env.CLAUDE_TEAMS_PATH || join14(process.env.HOME || "/root", ".claude/teams");
       const teamCwd = getTeamProjectDir(teamsPath, team);
       projectDir = teamCwd || process.cwd();
     } else {
@@ -4195,7 +4855,7 @@ async function commandsRoutes(fastify) {
     }
     const data = scanProjectDir(projectDir);
     cacheMap.set(cacheKey, { data, timestamp: Date.now() });
-    log12.debug(`Scanned commands for ${projectDir}: ${data.commands.length} commands, ${data.skills.length} skills`);
+    log13.debug(`Scanned commands for ${projectDir}: ${data.commands.length} commands, ${data.skills.length} skills`);
     return data;
   });
 }
@@ -4204,7 +4864,7 @@ async function commandsRoutes(fastify) {
 var __dirname2 = dirname(fileURLToPath(import.meta.url));
 async function createServer(options) {
   const { config, dataDir } = options;
-  const logDir = join14(dataDir, "logs");
+  const logDir = join15(dataDir, "logs");
   initLogFactory({
     enabled: config.logConfig?.enabled ?? true,
     level: config.logConfig?.level ?? "info",
@@ -4213,7 +4873,7 @@ async function createServer(options) {
     logDir,
     colorize: process.env.NODE_ENV !== "production"
   });
-  const log13 = createLogger({ module: "Server", shorthand: "s.server" });
+  const log14 = createLogger({ module: "Server", shorthand: "s.server" });
   const fastify = Fastify({
     logger: {
       level: "info"
@@ -4225,8 +4885,8 @@ async function createServer(options) {
   });
   await fastify.register(websocket);
   const db = new DatabaseService(dataDir);
-  log13.info("Database initialized");
-  const configPath = join14(dataDir, "config.json");
+  log14.info("Database initialized");
+  const configPath = join15(dataDir, "config.json");
   const configService = new ConfigService(configPath, config);
   const dataSync = new DataSyncService({
     claudeTeamsPath: config.teamsPath,
@@ -4235,9 +4895,9 @@ async function createServer(options) {
     fastify
   });
   await dataSync.init();
-  log13.info("Data sync initialized");
+  log14.info("Data sync initialized");
   const memberStatusService = new MemberStatusService();
-  log13.info("Member status service initialized");
+  log14.info("Member status service initialized");
   const memberStatusLog = createLogger({ module: "MemberStatus", shorthand: "s.mstatus" });
   const fileWatcher = new FileWatcherService({
     claudeTeamsPath: config.teamsPath,
@@ -4266,7 +4926,16 @@ async function createServer(options) {
     }
   });
   await fileWatcher.start();
-  log13.info("File watcher started");
+  log14.info("File watcher started");
+  const jsonlSync = new JsonlSyncService({ db, fastify, teamsPath: config.teamsPath });
+  jsonlSync.fullScan().then((result) => {
+    log14.info(`JSONL sync: ${result.files} files, ${result.messages} messages scanned in ${result.elapsed}ms`);
+    jsonlSync.startWatching();
+    jsonlSync.startDirectoryWatch();
+    log14.info("JSONL incremental watcher started");
+  }).catch((err) => {
+    log14.error(`JSONL full scan failed: ${err}`);
+  });
   try {
     const teams = await db.getTeams();
     for (const team of teams) {
@@ -4276,9 +4945,9 @@ async function createServer(options) {
         }
       }
     }
-    log13.info(`Initialized ${teams.length} teams with offline status`);
+    log14.info(`Initialized ${teams.length} teams with offline status`);
   } catch (err) {
-    log13.error(`Error initializing team members: ${err}`);
+    log14.error(`Error initializing team members: ${err}`);
   }
   const cleanupService = new CleanupService(db, {
     retentionDays: config.retentionDays,
@@ -4286,7 +4955,7 @@ async function createServer(options) {
     cleanupTime: config.cleanupTime
   });
   cleanupService.schedule();
-  log13.info("Cleanup service scheduled");
+  log14.info("Cleanup service scheduled");
   configService.startWatching((changes) => {
     if (fastify.websocketServer) {
       const pendingRestart = configService.needsRestart();
@@ -4316,7 +4985,7 @@ async function createServer(options) {
       updateLogConfig(logConfigChange.newValue);
     }
   });
-  log13.info("Config service started");
+  log14.info("Config service started");
   fastify.register(teams_default, { prefix: "/api/teams", db });
   fastify.register(messages_default, { prefix: "/api/teams", db, dataSync });
   fastify.register(permission_response_default, { prefix: "/api/teams", db, claudeTeamsPath: config.teamsPath });
@@ -4325,14 +4994,14 @@ async function createServer(options) {
   fastify.register(archive_default, { prefix: "/api/archive", db, dataDir });
   fastify.register(logs_default, { prefix: "/api/logs", configService });
   fastify.register(hooks_default, { prefix: "/api/hooks", fastify });
-  fastify.register(member_session_default, { prefix: "/api/teams", teamsPath: config.teamsPath });
+  fastify.register(member_session_default, { prefix: "/api/teams", teamsPath: config.teamsPath, db });
   fastify.register(commandsRoutes, { prefix: "/api/commands" });
-  const wsLog3 = createLogger({ module: "WebSocket", shorthand: "s.ws" });
+  const wsLog4 = createLogger({ module: "WebSocket", shorthand: "s.ws" });
   fastify.register(async (fastify2) => {
     fastify2.get("/ws", { websocket: true }, (socket, _req) => {
-      wsLog3.info("Client connected");
+      wsLog4.info("Client connected");
       if (!socket || typeof socket.on !== "function") {
-        wsLog3.error("Invalid socket object");
+        wsLog4.error("Invalid socket object");
         return;
       }
       socket.on("message", (message) => {
@@ -4340,7 +5009,7 @@ async function createServer(options) {
           const data = JSON.parse(message.toString());
           switch (data.type) {
             case "join_team":
-              wsLog3.info(`Client joined team: ${data.team}`);
+              wsLog4.info(`Client joined team: ${data.team}`);
               (async () => {
                 try {
                   const team = await db.getTeam(data.team);
@@ -4350,7 +5019,7 @@ async function createServer(options) {
                     }
                   }
                 } catch (err) {
-                  wsLog3.error(`Error initializing team members: ${err}`);
+                  wsLog4.error(`Error initializing team members: ${err}`);
                 }
                 const statuses = memberStatusService.getMemberStatuses(data.team);
                 if (fastify2.websocketServer) {
@@ -4367,7 +5036,7 @@ async function createServer(options) {
               })();
               break;
             case "leave_team":
-              wsLog3.info(`Client left team: ${data.team}`);
+              wsLog4.info(`Client left team: ${data.team}`);
               break;
             case "typing":
               if (fastify2.websocketServer) {
@@ -4383,10 +5052,10 @@ async function createServer(options) {
               }
               break;
             case "mark_read":
-              wsLog3.debug(`Marked read: ${data.messageId}`);
+              wsLog4.debug(`Marked read: ${data.messageId}`);
               break;
             case "send_cross_team_message":
-              wsLog3.info(`Cross-team message from ${data.fromTeam} to ${data.toTeam}`);
+              wsLog4.info(`Cross-team message from ${data.fromTeam} to ${data.toTeam}`);
               (async () => {
                 try {
                   const result = await dataSync.sendCrossTeamMessage(
@@ -4402,7 +5071,7 @@ async function createServer(options) {
                     }));
                   }
                 } catch (err) {
-                  wsLog3.error(`Error sending cross-team message: ${err}`);
+                  wsLog4.error(`Error sending cross-team message: ${err}`);
                   socket.send(JSON.stringify({
                     type: "error",
                     error: "Failed to send cross-team message"
@@ -4412,18 +5081,18 @@ async function createServer(options) {
               break;
           }
         } catch (err) {
-          wsLog3.error(`Error handling message: ${err}`);
+          wsLog4.error(`Error handling message: ${err}`);
         }
       });
       socket.on("close", () => {
-        wsLog3.info("Client disconnected");
+        wsLog4.info("Client disconnected");
       });
     });
   });
   const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
-  const clientDistPath = pluginRoot ? join14(pluginRoot, "dist", "client") : join14(__dirname2, "../../client");
-  log13.info(`Serving frontend from ${clientDistPath}${pluginRoot ? " (plugin)" : " (development)"}`);
-  if (existsSync13(clientDistPath)) {
+  const clientDistPath = pluginRoot ? join15(pluginRoot, "dist", "client") : join15(__dirname2, "../../client");
+  log14.info(`Serving frontend from ${clientDistPath}${pluginRoot ? " (plugin)" : " (development)"}`);
+  if (existsSync14(clientDistPath)) {
     fastify.register(staticPlugin, {
       root: clientDistPath,
       prefix: "/"
@@ -4465,16 +5134,17 @@ async function createServer(options) {
     onRestart: handleRestart
   });
   const shutdown = async (restart = false) => {
-    log13.info("Shutting down...");
+    log14.info("Shutting down...");
     fileWatcher.stop();
+    jsonlSync.stop();
     configService.stopWatching();
     cleanupService.stop();
     closeLogFactory();
     db.close();
     await fastify.close();
-    log13.info("Shutdown complete");
+    log14.info("Shutdown complete");
     if (restart) {
-      log13.info("Restarting...");
+      log14.info("Restarting...");
       const nodePath = process.execPath;
       const scriptPath = process.argv[1];
       const originalArgs = process.argv.slice(2);
@@ -4498,7 +5168,7 @@ async function createServer(options) {
   };
   process.on("SIGINT", () => shutdown(false));
   process.on("SIGTERM", () => shutdown(false));
-  return { fastify, db, dataSync, fileWatcher, cleanupService, memberStatusService };
+  return { fastify, db, dataSync, fileWatcher, cleanupService, memberStatusService, jsonlSync };
 }
 
 // src/server/cli.ts
@@ -4515,15 +5185,15 @@ program.option("-p, --port <port>", "Port to run on").option("-h, --host <host>"
     process.exit(1);
   });
   try {
-    const dataDir = options.data ? resolve(options.data) : join15(homedir7(), ".claude-chat");
-    const teamsPath = options.teams ? resolve(options.teams) : join15(homedir7(), ".claude", "teams");
-    if (!existsSync14(dataDir)) {
+    const dataDir = options.data ? resolve(options.data) : join16(homedir8(), ".claude-chat");
+    const teamsPath = options.teams ? resolve(options.teams) : join16(homedir8(), ".claude", "teams");
+    if (!existsSync15(dataDir)) {
       mkdirSync4(dataDir, { recursive: true });
     }
-    const configPath = join15(dataDir, "config.json");
+    const configPath = join16(dataDir, "config.json");
     let config;
-    if (existsSync14(configPath)) {
-      const fileConfig = JSON.parse(readFileSync8(configPath, "utf8"));
+    if (existsSync15(configPath)) {
+      const fileConfig = JSON.parse(readFileSync9(configPath, "utf8"));
       config = {
         ...DEFAULT_CONFIG,
         ...fileConfig,
@@ -4587,13 +5257,13 @@ program.option("-p, --port <port>", "Port to run on").option("-h, --host <host>"
   }
 });
 program.command("cleanup").description("Run cleanup task manually").option("-d, --data <path>", "Data directory").action(async (options) => {
-  const dataDir = options.data ? resolve(options.data) : join15(homedir7(), ".claude-chat");
+  const dataDir = options.data ? resolve(options.data) : join16(homedir8(), ".claude-chat");
   console.log("Running cleanup...");
   const { DatabaseService: DatabaseService2 } = await Promise.resolve().then(() => (init_db(), db_exports));
   const { CleanupService: CleanupService2 } = await Promise.resolve().then(() => (init_services(), services_exports));
   const db = new DatabaseService2(dataDir);
-  const configPath = join15(dataDir, "config.json");
-  const config = existsSync14(configPath) ? JSON.parse(readFileSync8(configPath, "utf8")) : DEFAULT_CONFIG;
+  const configPath = join16(dataDir, "config.json");
+  const config = existsSync15(configPath) ? JSON.parse(readFileSync9(configPath, "utf8")) : DEFAULT_CONFIG;
   const cleanupService = new CleanupService2(db, {
     retentionDays: config.retentionDays || 90,
     cleanupEnabled: true,

@@ -98,6 +98,15 @@ export function useWebSocket() {
             });
           }
 
+          // Session messages from JSONL sync — trigger reload
+          if (data.type === 'new_session_messages' && data.team) {
+            setLastMessage({
+              team: data.team,
+              timestamp: Date.now(),
+              type: 'new_session_messages'
+            });
+          }
+
           if (data.type === 'cross_team_message' && data.team && data.message) {
             setLastMessage({
               team: data.team,
